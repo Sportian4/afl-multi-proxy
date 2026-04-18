@@ -46,134 +46,132 @@ app.get('/markets/:eventId', async (req, res) => {
   }
 });
 
-// Fetch live 2026 player stats from aflml.com for both teams in a match
-// Usage: GET /stats?home=Hawthorn Hawks&away=Port Adelaide Power
-app.get('/stats', async (req, res) => {
-  const { home, away } = req.query;
-  if (!home || !away) return res.status(400).json({ error: 'home and away query params required' });
+// Fetch live 2026 stats for a list of player names from aflml.com
+// Usage: POST /stats with body { players: ["Lachie Neale", "Jeremy Cameron"] }
+app.post('/stats', async (req, res) => {
+  const { players } = req.body;
+  if (!players || !Array.isArray(players) || players.length === 0) {
+    return res.status(400).json({ error: 'players array required in body' });
+  }
 
   try {
-    // 1. Get the full player list page to find player IDs for these teams
-    const playersPage = await fetch('https://aflml.com/players', {
+    // Step 1: Get the player index from aflml to build name->id map
+    const indexRes = await fetch('https://aflml.com/players', {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AFL-Multi-Builder/1.0)' }
     });
-    const html = await playersPage.text();
+    const indexHtml = await indexRes.text();
 
-    // Extract player links: /players/123 with names from surrounding text
-    const playerLinks = [...html.matchAll(/href="\/players\/(\d+)"/g)].map(m => m[1]);
-    const uniqueIds = [...new Set(playerLinks)];
-
-    // Map team names to aflml team names (normalise)
-    const normalise = str => str.toLowerCase().replace(/\s+/g, ' ').trim();
-    const homeNorm = normalise(home);
-    const awayNorm = normalise(away);
-
-    // Extract team sections from HTML — aflml lists players by team
-    // Find players listed under each team heading
-    const teamPlayerMap = {};
-    const teamSectionRegex = /<h3[^>]*>([\w\s]+)<\/h3>[\s\S]*?(<\/ul>|(?=<h3))/g;
-
-    // Simpler approach: extract all /players/ID hrefs with surrounding context
-    // We'll fetch the players page and parse team->player relationships
-    const teamBlocks = html.split(/(?=<h3)/);
-
-    for (const block of teamBlocks) {
-      const teamMatch = block.match(/<h3[^>]*>([^<]+)<\/h3>/);
-      if (!teamMatch) continue;
-      const teamName = normalise(teamMatch[1]);
-      const ids = [...block.matchAll(/href="\/players\/(\d+)"/g)].map(m => m[1]);
-      if (ids.length > 0) teamPlayerMap[teamName] = ids;
+    // Extract all player hrefs and names from the page
+    // Pattern: href="/players/123">Name Surname
+    const playerIndex = {};
+    const linkRegex = /href="\/players\/(\d+)"[^>]*>([A-Z][a-z]+(?:\s[A-Z][a-zA-Z'-]+)+)/g;
+    let m;
+    while ((m = linkRegex.exec(indexHtml)) !== null) {
+      const id = m[1];
+      const name = m[2].trim();
+      playerIndex[name.toLowerCase()] = id;
+      // Also store surname only for fuzzy match
+      const parts = name.split(' ');
+      if (parts.length >= 2) {
+        const surname = parts[parts.length - 1].toLowerCase();
+        if (!playerIndex[surname]) playerIndex[surname] = id;
+      }
     }
 
-    // Find which team keys match home/away
-    const findTeamKey = (norm) => {
-      // Direct match first
-      for (const key of Object.keys(teamPlayerMap)) {
-        if (key.includes(norm) || norm.includes(key)) return key;
-      }
-      // Partial word match (e.g. "hawthorn" matches "hawthorn hawks")
-      const words = norm.split(' ');
-      for (const key of Object.keys(teamPlayerMap)) {
-        if (words.some(w => w.length > 4 && key.includes(w))) return key;
+    // Step 2: Match requested player names to IDs
+    const findId = (name) => {
+      const lower = name.toLowerCase();
+      // Exact match
+      if (playerIndex[lower]) return playerIndex[lower];
+      // Surname match
+      const parts = lower.split(' ');
+      const surname = parts[parts.length - 1];
+      if (playerIndex[surname]) return playerIndex[surname];
+      // Partial match
+      for (const [key, id] of Object.entries(playerIndex)) {
+        if (key.includes(surname) || surname.includes(key.split(' ').pop())) return id;
       }
       return null;
     };
 
-    const homeKey = findTeamKey(homeNorm);
-    const awayKey = findTeamKey(awayNorm);
+    const toFetch = players.slice(0, 20).map(name => ({
+      name,
+      id: findId(name)
+    })).filter(p => p.id);
 
-    const homeIds = homeKey ? (teamPlayerMap[homeKey] || []).slice(0, 8) : [];
-    const awayIds = awayKey ? (teamPlayerMap[awayKey] || []).slice(0, 8) : [];
-    const allIds = [...homeIds, ...awayIds];
-
-    if (allIds.length === 0) {
-      return res.json({ players: [], note: 'Could not find players for these teams on aflml.com' });
-    }
-
-    // 2. Fetch individual player pages for key stats
-    const playerStats = [];
-
-    await Promise.all(allIds.map(async (id) => {
+    // Step 3: Fetch each player page for their 2026 stats
+    const results = await Promise.all(toFetch.map(async ({ name, id }) => {
       try {
         const r = await fetch(`https://aflml.com/players/${id}`, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AFL-Multi-Builder/1.0)' }
         });
-        const phtml = await r.text();
+        const html = await r.text();
 
-        // Extract player name
-        const nameMatch = phtml.match(/<h1[^>]*>([^<]+)<\/h1>/);
-        const name = nameMatch ? nameMatch[1].trim() : `Player ${id}`;
+        // Parse key stats using reliable patterns
+        const extract = (pattern) => {
+          const m = html.match(pattern);
+          return m ? parseFloat(m[1]) : null;
+        };
 
-        // Extract team
-        const teamMatch = phtml.match(/\/players\]\s*\/([^/]+)\//);
+        // Career averages block
+        const avgDisposals  = extract(/Games[\s\S]{0,300}?Disposals[\s\S]{0,50}?(\d+\.?\d*)/);
+        const avgGoals      = extract(/Goals[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const avgMarks      = extract(/Marks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const avgTackles    = extract(/Tackles[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const avgKicks      = extract(/Kicks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const games         = extract(/Games[\s\S]{0,50}?(\d+)(?!\d)/);
 
-        // Extract career averages section
-        const avgDisp = phtml.match(/Disposals<\/[^>]+>\s*[\r\n\s]*(\d+\.?\d*)/);
-        const avgGoals = phtml.match(/Goals<\/[^>]+>\s*[\r\n\s]*(\d+\.?\d*)/);
-        const avgMarks = phtml.match(/Marks<\/[^>]+>\s*[\r\n\s]*(\d+\.?\d*)/);
-        const avgTackles = phtml.match(/Tackles<\/[^>]+>\s*[\r\n\s]*(\d+\.?\d*)/);
-        const avgKicks = phtml.match(/Kicks<\/[^>]+>\s*[\r\n\s]*(\d+\.?\d*)/);
-        const avgHB = phtml.match(/Handballs<\/[^>]+>\s*[\r\n\s]*(\d+\.?\d*)/);
-        const gamesMatch = phtml.match(/Games<\/[^>]+>\s*[\r\n\s]*(\d+)/);
+        // Last 5 avg shown on page
+        const last5Avg = extract(/Last 5 avg:\s*([\d.]+)/);
 
-        // Extract last 5 form from table rows - look for recent match data
-        const recentRows = [...phtml.matchAll(/>\s*(\d+)\s*<\/td>\s*<td[^>]*>\s*(\d+)\s*<\/td>\s*<td[^>]*>\s*(\d+)\s*<\/td>/g)].slice(0, 5);
-        const last5Disposals = recentRows.map(r => parseInt(r[1])).filter(n => !isNaN(n) && n > 0 && n < 60);
+        // Predicted disposals for next game
+        const predicted = extract(/Predicted Disposals[\s\S]{0,100}?([\d.]+)/);
 
-        // Extract predicted disposals for next game
-        const predictedMatch = phtml.match(/Predicted Disposals[\s\S]{0,200}?(\d+\.?\d+)/);
+        // Hit rates from betting insights table
+        const hit15 = extract(/15\+[\s\S]{0,200}?(\d+)%[\s\S]{0,50}?(\d+)%[\s\S]{0,50}?(\d+)%/);
+        const hitRates = {};
+        const hrMatches = [...html.matchAll(/(\d+)\+[^%]{0,100}?(\d+)%\s*\|\s*(\d+)%\s*\|\s*(\d+)%\s*\|\s*(\d+)%/g)];
+        for (const hr of hrMatches) {
+          hitRates[`${hr[1]}plus`] = {
+            season: parseInt(hr[2]),
+            last10: parseInt(hr[3]),
+            last5: parseInt(hr[4]),
+          };
+        }
 
-        // Extract betting lines - look for "15+", "20+", "25+" with percentages
-        const line20 = phtml.match(/20\+[\s\S]{0,100}?(\d+)%/);
-        const line25 = phtml.match(/25\+[\s\S]{0,100}?(\d+)%/);
+        // Recent form: extract last 5 disposal numbers from match table
+        const dispMatches = [...html.matchAll(/<td[^>]*>\s*(\d{1,2})\s*<\/td>/g)]
+          .map(m => parseInt(m[1]))
+          .filter(n => n > 0 && n < 60)
+          .slice(0, 5);
 
-        playerStats.push({
-          id,
+        return {
           name,
-          avgDisposals: avgDisp ? parseFloat(avgDisp[1]) : null,
-          avgGoals: avgGoals ? parseFloat(avgGoals[1]) : null,
-          avgMarks: avgMarks ? parseFloat(avgMarks[1]) : null,
-          avgTackles: avgTackles ? parseFloat(avgTackles[1]) : null,
-          avgKicks: avgKicks ? parseFloat(avgKicks[1]) : null,
-          avgHandballs: avgHB ? parseFloat(avgHB[1]) : null,
-          games: gamesMatch ? parseInt(gamesMatch[1]) : null,
-          last5Disposals: last5Disposals.length > 0 ? last5Disposals : null,
-          last5Avg: last5Disposals.length > 0 ? (last5Disposals.reduce((a,b)=>a+b,0)/last5Disposals.length).toFixed(1) : null,
-          predictedDisposals: predictedMatch ? parseFloat(predictedMatch[1]) : null,
-          hitRate20plus: line20 ? parseInt(line20[1]) : null,
-          hitRate25plus: line25 ? parseInt(line25[1]) : null,
-        });
+          id,
+          season2026: {
+            avgDisposals,
+            avgGoals,
+            avgMarks,
+            avgTackles,
+            avgKicks,
+            games,
+            last5Avg,
+            predictedDisposals: predicted,
+            recentDisposals: dispMatches.length > 0 ? dispMatches : null,
+            hitRates: Object.keys(hitRates).length > 0 ? hitRates : null,
+          }
+        };
       } catch (e) {
-        // Skip individual player fetch errors
+        return { name, id, error: e.message };
       }
     }));
 
     res.json({
-      home,
-      away,
-      players: playerStats.filter(p => p.name && p.name !== `Player ${p.id}`),
+      players: results,
       source: 'aflml.com',
       season: 2026,
+      found: results.length,
+      notFound: players.filter(p => !findId(p)),
     });
 
   } catch (e) {
