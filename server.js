@@ -9,7 +9,7 @@ const AFL_SPORT = 'aussierules_afl';
 const BASE = 'https://api.the-odds-api.com/v4';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Health check
 app.get('/', (req, res) => res.json({ status: 'AFL Multi Builder proxy running' }));
@@ -40,6 +40,25 @@ app.get('/markets/:eventId', async (req, res) => {
     );
     const data = await r.json();
     res.set('x-requests-remaining', r.headers.get('x-requests-remaining'));
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Proxy Anthropic API call (avoids browser CORS restriction)
+app.post('/analyse', async (req, res) => {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(req.body),
+    });
+    const data = await r.json();
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
