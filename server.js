@@ -1,4 +1,4 @@
-const express = require('express');
+     const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 
@@ -46,6 +46,105 @@ app.get('/markets/:eventId', async (req, res) => {
   }
 });
 
+// Scrape named lineups from footywire for both teams
+// Usage: GET /lineups?home=Hawthorn Hawks&away=Port Adelaide Power
+app.get('/lineups', async (req, res) => {
+  const { home, away } = req.query;
+  if (!home || !away) return res.status(400).json({ error: 'home and away required' });
+
+  try {
+    const r = await fetch('https://www.footywire.com/afl/footy/afl_team_selections', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+    const html = await r.text();
+
+    // Extract all player names from footywire links
+    // Pattern: pp-team-name--player-name
+    const allLinks = [...html.matchAll(/pp-([a-z-]+)--([a-z-]+)">([^<]+)<\/a>/g)];
+
+    // Build team -> players map
+    const teamMap = {};
+    for (const [, teamSlug, , playerName] of allLinks) {
+      const clean = playerName.trim();
+      if (!clean || clean.length < 3) continue;
+      if (!teamMap[teamSlug]) teamMap[teamSlug] = new Set();
+      teamMap[teamSlug].add(clean);
+    }
+
+    // Normalise team name to slug
+    const toSlug = (name) => {
+      const lower = name.toLowerCase();
+      // Common mappings
+      const map = {
+        'hawthorn hawks': 'hawthorn-hawks',
+        'hawthorn': 'hawthorn-hawks',
+        'port adelaide power': 'port-adelaide-power',
+        'port adelaide': 'port-adelaide-power',
+        'gold coast suns': 'gold-coast-suns',
+        'gold coast': 'gold-coast-suns',
+        'essendon bombers': 'essendon-bombers',
+        'essendon': 'essendon-bombers',
+        'adelaide crows': 'adelaide-crows',
+        'adelaide': 'adelaide-crows',
+        'st kilda saints': 'st-kilda-saints',
+        'st kilda': 'st-kilda-saints',
+        'north melbourne kangaroos': 'north-melbourne-kangaroos',
+        'north melbourne': 'north-melbourne-kangaroos',
+        'richmond tigers': 'richmond-tigers',
+        'richmond': 'richmond-tigers',
+        'melbourne demons': 'melbourne-demons',
+        'melbourne': 'melbourne-demons',
+        'brisbane lions': 'brisbane-lions',
+        'brisbane': 'brisbane-lions',
+        'west coast eagles': 'west-coast-eagles',
+        'west coast': 'west-coast-eagles',
+        'fremantle dockers': 'fremantle-dockers',
+        'fremantle': 'fremantle-dockers',
+        'geelong cats': 'geelong-cats',
+        'geelong': 'geelong-cats',
+        'western bulldogs': 'western-bulldogs',
+        'bulldogs': 'western-bulldogs',
+        'collingwood magpies': 'collingwood-magpies',
+        'collingwood': 'collingwood-magpies',
+        'carlton blues': 'carlton-blues',
+        'carlton': 'carlton-blues',
+        'sydney swans': 'sydney-swans',
+        'sydney': 'sydney-swans',
+        'gws giants': 'greater-western-sydney-giants',
+        'greater western sydney': 'greater-western-sydney-giants',
+        'gwsgiants': 'greater-western-sydney-giants',
+      };
+      return map[lower] || lower.replace(/\s+/g, '-');
+    };
+
+    const homeSlug = toSlug(home);
+    const awaySlug = toSlug(away);
+
+    // Find matching team keys (partial match fallback)
+    const findTeam = (slug) => {
+      if (teamMap[slug]) return [...teamMap[slug]];
+      // Try partial
+      const key = Object.keys(teamMap).find(k => k.includes(slug.split('-')[0]) || slug.includes(k.split('-')[0]));
+      return key ? [...teamMap[key]] : [];
+    };
+
+    const homePlayers = findTeam(homeSlug);
+    const awayPlayers = findTeam(awaySlug);
+
+    res.json({
+      home,
+      away,
+      homePlayers,
+      awayPlayers,
+      totalNamed: homePlayers.length + awayPlayers.length,
+      source: 'footywire.com',
+    });
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Fetch live 2026 stats for a list of player names from aflml.com
 // Usage: POST /stats with body { players: ["Lachie Neale", "Jeremy Cameron"] }
 app.post('/stats', async (req, res) => {
@@ -55,14 +154,11 @@ app.post('/stats', async (req, res) => {
   }
 
   try {
-    // Step 1: Get the player index from aflml to build name->id map
     const indexRes = await fetch('https://aflml.com/players', {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AFL-Multi-Builder/1.0)' }
     });
     const indexHtml = await indexRes.text();
 
-    // Extract all player hrefs and names from the page
-    // Pattern: href="/players/123">Name Surname
     const playerIndex = {};
     const linkRegex = /href="\/players\/(\d+)"[^>]*>([A-Z][a-z]+(?:\s[A-Z][a-zA-Z'-]+)+)/g;
     let m;
@@ -70,7 +166,6 @@ app.post('/stats', async (req, res) => {
       const id = m[1];
       const name = m[2].trim();
       playerIndex[name.toLowerCase()] = id;
-      // Also store surname only for fuzzy match
       const parts = name.split(' ');
       if (parts.length >= 2) {
         const surname = parts[parts.length - 1].toLowerCase();
@@ -78,16 +173,12 @@ app.post('/stats', async (req, res) => {
       }
     }
 
-    // Step 2: Match requested player names to IDs
     const findId = (name) => {
       const lower = name.toLowerCase();
-      // Exact match
       if (playerIndex[lower]) return playerIndex[lower];
-      // Surname match
       const parts = lower.split(' ');
       const surname = parts[parts.length - 1];
       if (playerIndex[surname]) return playerIndex[surname];
-      // Partial match
       for (const [key, id] of Object.entries(playerIndex)) {
         if (key.includes(surname) || surname.includes(key.split(' ').pop())) return id;
       }
@@ -99,7 +190,6 @@ app.post('/stats', async (req, res) => {
       id: findId(name)
     })).filter(p => p.id);
 
-    // Step 3: Fetch each player page for their 2026 stats
     const results = await Promise.all(toFetch.map(async ({ name, id }) => {
       try {
         const r = await fetch(`https://aflml.com/players/${id}`, {
@@ -107,56 +197,34 @@ app.post('/stats', async (req, res) => {
         });
         const html = await r.text();
 
-        // Parse key stats using reliable patterns
         const extract = (pattern) => {
           const m = html.match(pattern);
           return m ? parseFloat(m[1]) : null;
         };
 
-        // Career averages block
         const avgDisposals  = extract(/Games[\s\S]{0,300}?Disposals[\s\S]{0,50}?(\d+\.?\d*)/);
         const avgGoals      = extract(/Goals[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
         const avgMarks      = extract(/Marks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
         const avgTackles    = extract(/Tackles[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
         const avgKicks      = extract(/Kicks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
         const games         = extract(/Games[\s\S]{0,50}?(\d+)(?!\d)/);
+        const last5Avg      = extract(/Last 5 avg:\s*([\d.]+)/);
+        const predicted     = extract(/Predicted Disposals[\s\S]{0,100}?([\d.]+)/);
 
-        // Last 5 avg shown on page
-        const last5Avg = extract(/Last 5 avg:\s*([\d.]+)/);
-
-        // Predicted disposals for next game
-        const predicted = extract(/Predicted Disposals[\s\S]{0,100}?([\d.]+)/);
-
-        // Hit rates from betting insights table
-        const hit15 = extract(/15\+[\s\S]{0,200}?(\d+)%[\s\S]{0,50}?(\d+)%[\s\S]{0,50}?(\d+)%/);
         const hitRates = {};
         const hrMatches = [...html.matchAll(/(\d+)\+[^%]{0,100}?(\d+)%\s*\|\s*(\d+)%\s*\|\s*(\d+)%\s*\|\s*(\d+)%/g)];
         for (const hr of hrMatches) {
-          hitRates[`${hr[1]}plus`] = {
-            season: parseInt(hr[2]),
-            last10: parseInt(hr[3]),
-            last5: parseInt(hr[4]),
-          };
+          hitRates[`${hr[1]}plus`] = { season: parseInt(hr[2]), last10: parseInt(hr[3]), last5: parseInt(hr[4]) };
         }
 
-        // Recent form: extract last 5 disposal numbers from match table
         const dispMatches = [...html.matchAll(/<td[^>]*>\s*(\d{1,2})\s*<\/td>/g)]
-          .map(m => parseInt(m[1]))
-          .filter(n => n > 0 && n < 60)
-          .slice(0, 5);
+          .map(m => parseInt(m[1])).filter(n => n > 0 && n < 60).slice(0, 5);
 
         return {
-          name,
-          id,
+          name, id,
           season2026: {
-            avgDisposals,
-            avgGoals,
-            avgMarks,
-            avgTackles,
-            avgKicks,
-            games,
-            last5Avg,
-            predictedDisposals: predicted,
+            avgDisposals, avgGoals, avgMarks, avgTackles, avgKicks, games,
+            last5Avg, predictedDisposals: predicted,
             recentDisposals: dispMatches.length > 0 ? dispMatches : null,
             hitRates: Object.keys(hitRates).length > 0 ? hitRates : null,
           }
@@ -179,7 +247,7 @@ app.post('/stats', async (req, res) => {
   }
 });
 
-// Proxy Anthropic API call (avoids browser CORS restriction)
+// Proxy Anthropic API call
 app.post('/analyse', async (req, res) => {
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
