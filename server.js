@@ -1,4 +1,4 @@
-     const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 
@@ -46,98 +46,112 @@ app.get('/markets/:eventId', async (req, res) => {
   }
 });
 
-// Scrape named lineups from footywire for both teams
+// Get named lineups from Squiggle API (proper JSON, no JS rendering needed)
 // Usage: GET /lineups?home=Hawthorn Hawks&away=Port Adelaide Power
 app.get('/lineups', async (req, res) => {
   const { home, away } = req.query;
   if (!home || !away) return res.status(400).json({ error: 'home and away required' });
 
   try {
-    const r = await fetch('https://www.footywire.com/afl/footy/afl_team_selections', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    // Squiggle team name normalisation
+    const squiggleTeam = (name) => {
+      const map = {
+        'hawthorn hawks': 'Hawthorn',
+        'hawthorn': 'Hawthorn',
+        'port adelaide power': 'Port Adelaide',
+        'port adelaide': 'Port Adelaide',
+        'gold coast suns': 'Gold Coast',
+        'gold coast': 'Gold Coast',
+        'essendon bombers': 'Essendon',
+        'essendon': 'Essendon',
+        'adelaide crows': 'Adelaide',
+        'adelaide': 'Adelaide',
+        'st kilda saints': 'St Kilda',
+        'st kilda': 'St Kilda',
+        'north melbourne kangaroos': 'North Melbourne',
+        'north melbourne': 'North Melbourne',
+        'richmond tigers': 'Richmond',
+        'richmond': 'Richmond',
+        'melbourne demons': 'Melbourne',
+        'melbourne': 'Melbourne',
+        'brisbane lions': 'Brisbane',
+        'brisbane': 'Brisbane',
+        'west coast eagles': 'West Coast',
+        'west coast': 'West Coast',
+        'fremantle dockers': 'Fremantle',
+        'fremantle': 'Fremantle',
+        'geelong cats': 'Geelong',
+        'geelong': 'Geelong',
+        'western bulldogs': 'Western Bulldogs',
+        'bulldogs': 'Western Bulldogs',
+        'collingwood magpies': 'Collingwood',
+        'collingwood': 'Collingwood',
+        'carlton blues': 'Carlton',
+        'carlton': 'Carlton',
+        'sydney swans': 'Sydney',
+        'sydney': 'Sydney',
+        'gws giants': 'GWS',
+        'greater western sydney': 'GWS',
+        'greater western sydney giants': 'GWS',
+      };
+      return map[name.toLowerCase()] || name;
+    };
+
+    const homeSquiggle = squiggleTeam(home);
+    const awaySquiggle = squiggleTeam(away);
+
+    // Step 1: Get current round games from Squiggle to find game ID
+    const gamesRes = await fetch(
+      `https://api.squiggle.com.au/?q=games;year=2026`,
+      { headers: { 'User-Agent': 'AFL-Multi-Builder/1.0 (contact: afl-multi@example.com)' } }
+    );
+    const gamesData = await gamesRes.json();
+    const games = gamesData.games || [];
+
+    // Find the matching game
+    const match = games.find(g => {
+      const h = (g.hteam || '').toLowerCase();
+      const a = (g.ateam || '').toLowerCase();
+      const hs = homeSquiggle.toLowerCase();
+      const as = awaySquiggle.toLowerCase();
+      return (h.includes(hs) || hs.includes(h)) && (a.includes(as) || as.includes(a));
     });
-    const html = await r.text();
 
-    // Extract all player names from footywire links
-    // Pattern: pp-team-name--player-name
-    const allLinks = [...html.matchAll(/pp-([a-z-]+)--([a-z-]+)">([^<]+)<\/a>/g)];
-
-    // Build team -> players map
-    const teamMap = {};
-    for (const [, teamSlug, , playerName] of allLinks) {
-      const clean = playerName.trim();
-      if (!clean || clean.length < 3) continue;
-      if (!teamMap[teamSlug]) teamMap[teamSlug] = new Set();
-      teamMap[teamSlug].add(clean);
+    if (!match) {
+      return res.json({
+        home, away, homePlayers: [], awayPlayers: [],
+        note: `Game not found in Squiggle for ${homeSquiggle} vs ${awaySquiggle}`
+      });
     }
 
-    // Normalise team name to slug
-    const toSlug = (name) => {
-      const lower = name.toLowerCase();
-      // Common mappings
-      const map = {
-        'hawthorn hawks': 'hawthorn-hawks',
-        'hawthorn': 'hawthorn-hawks',
-        'port adelaide power': 'port-adelaide-power',
-        'port adelaide': 'port-adelaide-power',
-        'gold coast suns': 'gold-coast-suns',
-        'gold coast': 'gold-coast-suns',
-        'essendon bombers': 'essendon-bombers',
-        'essendon': 'essendon-bombers',
-        'adelaide crows': 'adelaide-crows',
-        'adelaide': 'adelaide-crows',
-        'st kilda saints': 'st-kilda-saints',
-        'st kilda': 'st-kilda-saints',
-        'north melbourne kangaroos': 'north-melbourne-kangaroos',
-        'north melbourne': 'north-melbourne-kangaroos',
-        'richmond tigers': 'richmond-tigers',
-        'richmond': 'richmond-tigers',
-        'melbourne demons': 'melbourne-demons',
-        'melbourne': 'melbourne-demons',
-        'brisbane lions': 'brisbane-lions',
-        'brisbane': 'brisbane-lions',
-        'west coast eagles': 'west-coast-eagles',
-        'west coast': 'west-coast-eagles',
-        'fremantle dockers': 'fremantle-dockers',
-        'fremantle': 'fremantle-dockers',
-        'geelong cats': 'geelong-cats',
-        'geelong': 'geelong-cats',
-        'western bulldogs': 'western-bulldogs',
-        'bulldogs': 'western-bulldogs',
-        'collingwood magpies': 'collingwood-magpies',
-        'collingwood': 'collingwood-magpies',
-        'carlton blues': 'carlton-blues',
-        'carlton': 'carlton-blues',
-        'sydney swans': 'sydney-swans',
-        'sydney': 'sydney-swans',
-        'gws giants': 'greater-western-sydney-giants',
-        'greater western sydney': 'greater-western-sydney-giants',
-        'gwsgiants': 'greater-western-sydney-giants',
-      };
-      return map[lower] || lower.replace(/\s+/g, '-');
-    };
+    // Step 2: Get lineup for this game
+    const lineupRes = await fetch(
+      `https://api.squiggle.com.au/?q=lineup;game=${match.id}`,
+      { headers: { 'User-Agent': 'AFL-Multi-Builder/1.0 (contact: afl-multi@example.com)' } }
+    );
+    const lineupData = await lineupRes.json();
+    const lineups = lineupData.lineups || [];
 
-    const homeSlug = toSlug(home);
-    const awaySlug = toSlug(away);
+    // Separate home and away players, filter to named (not emergencies where possible)
+    const homePlayers = lineups
+      .filter(p => (p.hteam || p.team || '').toLowerCase().includes(homeSquiggle.toLowerCase()) ||
+                   p.teamid === match.hteamid)
+      .map(p => p.player || p.name)
+      .filter(Boolean);
 
-    // Find matching team keys (partial match fallback)
-    const findTeam = (slug) => {
-      if (teamMap[slug]) return [...teamMap[slug]];
-      // Try partial
-      const key = Object.keys(teamMap).find(k => k.includes(slug.split('-')[0]) || slug.includes(k.split('-')[0]));
-      return key ? [...teamMap[key]] : [];
-    };
-
-    const homePlayers = findTeam(homeSlug);
-    const awayPlayers = findTeam(awaySlug);
+    const awayPlayers = lineups
+      .filter(p => (p.ateam || p.team || '').toLowerCase().includes(awaySquiggle.toLowerCase()) ||
+                   p.teamid === match.ateamid)
+      .map(p => p.player || p.name)
+      .filter(Boolean);
 
     res.json({
-      home,
-      away,
-      homePlayers,
-      awayPlayers,
-      totalNamed: homePlayers.length + awayPlayers.length,
-      source: 'footywire.com',
+      home, away,
+      homePlayers: [...new Set(homePlayers)],
+      awayPlayers: [...new Set(awayPlayers)],
+      gameId: match.id,
+      round: match.round,
+      source: 'squiggle.com.au',
     });
 
   } catch (e) {
@@ -185,9 +199,8 @@ app.post('/stats', async (req, res) => {
       return null;
     };
 
-    const toFetch = players.slice(0, 20).map(name => ({
-      name,
-      id: findId(name)
+    const toFetch = players.slice(0, 25).map(name => ({
+      name, id: findId(name)
     })).filter(p => p.id);
 
     const results = await Promise.all(toFetch.map(async ({ name, id }) => {
@@ -202,14 +215,14 @@ app.post('/stats', async (req, res) => {
           return m ? parseFloat(m[1]) : null;
         };
 
-        const avgDisposals  = extract(/Games[\s\S]{0,300}?Disposals[\s\S]{0,50}?(\d+\.?\d*)/);
-        const avgGoals      = extract(/Goals[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
-        const avgMarks      = extract(/Marks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
-        const avgTackles    = extract(/Tackles[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
-        const avgKicks      = extract(/Kicks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
-        const games         = extract(/Games[\s\S]{0,50}?(\d+)(?!\d)/);
-        const last5Avg      = extract(/Last 5 avg:\s*([\d.]+)/);
-        const predicted     = extract(/Predicted Disposals[\s\S]{0,100}?([\d.]+)/);
+        const avgDisposals = extract(/Games[\s\S]{0,300}?Disposals[\s\S]{0,50}?(\d+\.?\d*)/);
+        const avgGoals     = extract(/Goals[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const avgMarks     = extract(/Marks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const avgTackles   = extract(/Tackles[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const avgKicks     = extract(/Kicks[\s\S]{0,50}?(\d+\.?\d{0,2})(?!\d)/);
+        const games        = extract(/Games[\s\S]{0,50}?(\d+)(?!\d)/);
+        const last5Avg     = extract(/Last 5 avg:\s*([\d.]+)/);
+        const predicted    = extract(/Predicted Disposals[\s\S]{0,100}?([\d.]+)/);
 
         const hitRates = {};
         const hrMatches = [...html.matchAll(/(\d+)\+[^%]{0,100}?(\d+)%\s*\|\s*(\d+)%\s*\|\s*(\d+)%\s*\|\s*(\d+)%/g)];
