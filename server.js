@@ -41,107 +41,7 @@ app.get('/markets/:eventId', async (req, res) => {
   }
 });
 
-// Squiggle team name map
-const toSquiggle = (name) => {
-  const map = {
-    'hawthorn hawks': 'Hawthorn', 'hawthorn': 'Hawthorn',
-    'port adelaide power': 'Port Adelaide', 'port adelaide': 'Port Adelaide',
-    'gold coast suns': 'Gold Coast', 'gold coast': 'Gold Coast',
-    'essendon bombers': 'Essendon', 'essendon': 'Essendon',
-    'adelaide crows': 'Adelaide', 'adelaide': 'Adelaide',
-    'st kilda saints': 'St Kilda', 'st kilda': 'St Kilda',
-    'north melbourne kangaroos': 'North Melbourne', 'north melbourne': 'North Melbourne',
-    'richmond tigers': 'Richmond', 'richmond': 'Richmond',
-    'melbourne demons': 'Melbourne', 'melbourne': 'Melbourne',
-    'brisbane lions': 'Brisbane', 'brisbane': 'Brisbane',
-    'west coast eagles': 'West Coast', 'west coast': 'West Coast',
-    'fremantle dockers': 'Fremantle', 'fremantle': 'Fremantle',
-    'geelong cats': 'Geelong', 'geelong': 'Geelong',
-    'western bulldogs': 'Western Bulldogs', 'bulldogs': 'Western Bulldogs',
-    'collingwood magpies': 'Collingwood', 'collingwood': 'Collingwood',
-    'carlton blues': 'Carlton', 'carlton': 'Carlton',
-    'sydney swans': 'Sydney', 'sydney': 'Sydney',
-    'gws giants': 'GWS', 'greater western sydney': 'GWS',
-    'greater western sydney giants': 'GWS',
-  };
-  return map[name.toLowerCase()] || name;
-};
-
-// Get named lineups via Squiggle API
-// Usage: GET /lineups?home=Hawthorn Hawks&away=Port Adelaide Power
-app.get('/lineups', async (req, res) => {
-  const { home, away } = req.query;
-  if (!home || !away) return res.status(400).json({ error: 'home and away required' });
-
-  const homeS = toSquiggle(home);
-  const awayS = toSquiggle(away);
-
-  // Squiggle requires a proper Accept header and no bot-like UA
-  const squiggleHeaders = {
-    'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Referer': 'https://squiggle.com.au/',
-  };
-
-  try {
-    // Step 1: Get all 2026 games to find the matching game ID
-    const gamesRes = await fetch('https://api.squiggle.com.au/?q=games;year=2026', { headers: squiggleHeaders });
-    const gamesText = await gamesRes.text();
-
-    let games = [];
-    try {
-      const gamesData = JSON.parse(gamesText);
-      games = gamesData.games || [];
-    } catch(e) {
-      return res.status(502).json({ error: 'Squiggle returned non-JSON', raw: gamesText.slice(0, 200) });
-    }
-
-    // Find matching game
-    const match = games.find(g => {
-      const h = (g.hteam || '').toLowerCase();
-      const a = (g.ateam || '').toLowerCase();
-      const hs = homeS.toLowerCase();
-      const as = awayS.toLowerCase();
-      return (h.includes(hs) || hs.includes(h)) && (a.includes(as) || as.includes(a));
-    });
-
-    if (!match) {
-      return res.json({ home, away, homePlayers: [], awayPlayers: [], note: `No game found for ${homeS} vs ${awayS}` });
-    }
-
-    // Step 2: Get lineup for the game
-    const lineupRes = await fetch(`https://api.squiggle.com.au/?q=lineup;game=${match.id}`, { headers: squiggleHeaders });
-    const lineupText = await lineupRes.text();
-
-    let lineups = [];
-    try {
-      const lineupData = JSON.parse(lineupText);
-      lineups = lineupData.lineups || [];
-    } catch(e) {
-      return res.status(502).json({ error: 'Squiggle lineup returned non-JSON', raw: lineupText.slice(0, 200) });
-    }
-
-    const homePlayers = [...new Set(
-      lineups.filter(p => p.teamid === match.hteamid).map(p => p.player).filter(Boolean)
-    )];
-    const awayPlayers = [...new Set(
-      lineups.filter(p => p.teamid === match.ateamid).map(p => p.player).filter(Boolean)
-    )];
-
-    res.json({
-      home, away, homePlayers, awayPlayers,
-      gameId: match.id, round: match.round,
-      source: 'squiggle.com.au',
-      totalNamed: homePlayers.length + awayPlayers.length,
-    });
-
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // Fetch live 2026 stats for a list of player names from aflml.com
-// Usage: POST /stats with body { players: ["Lachie Neale", "Jeremy Cameron"] }
 app.post('/stats', async (req, res) => {
   const { players } = req.body;
   if (!players || !Array.isArray(players) || players.length === 0) {
@@ -213,23 +113,35 @@ app.post('/stats', async (req, res) => {
       }
     }));
 
-    res.json({ players: results, source: 'aflml.com', season: 2026, found: results.length, notFound: players.filter(p => !findId(p)) });
+    res.json({ players: results, source: 'aflml.com', season: 2026, found: results.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Proxy Anthropic API call
+// Proxy Anthropic API call — includes web_search tool so Claude can look up named teams
 app.post('/analyse', async (req, res) => {
   try {
+    // Inject web_search tool into every analysis request
+    const body = {
+      ...req.body,
+      tools: [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+        }
+      ],
+    };
+
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY || '',
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'web-search-2025-03-05',
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(body),
     });
     const data = await r.json();
     res.json(data);
