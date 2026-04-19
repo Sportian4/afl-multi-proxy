@@ -125,4 +125,38 @@ app.post('/analyse', async (req, res) => {
   }
 });
 
+
+// PWA manifest — enables Add to Home Screen on Android
+app.get('/manifest.json', (req, res) => {
+  res.json({
+    name: 'AFL Multi Builder',
+    short_name: 'AFL Multi',
+    description: 'Build smart AFL same-game multis with live odds and AI analysis',
+    start_url: '/app',
+    display: 'standalone',
+    background_color: '#f2ede4',
+    theme_color: '#1a3a6b',
+    icons: [
+      { src: '/icon.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon.png', sizes: '512x512', type: 'image/png' }
+    ]
+  });
+});
+
+// Simple football emoji icon as SVG served as PNG workaround
+app.get('/icon.png', (req, res) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192">
+    <rect width="192" height="192" rx="32" fill="#1a3a6b"/>
+    <text x="96" y="130" font-size="100" text-anchor="middle">🏉</text>
+  </svg>`;
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.send(svg);
+});
+
+// Service worker for PWA
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.send('self.addEventListener("fetch", e => e.respondWith(fetch(e.request)));');
+});
+
 app.listen(PORT, () => console.log(`Proxy running on port ${PORT}`));
