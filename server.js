@@ -107,6 +107,152 @@ app.post('/stats', async (req, res) => {
   }
 });
 
+
+// Learning engine — analyse tracker data and generate betting insights
+app.post('/insights', async (req, res) => {
+  const { trackerData } = req.body;
+  if (!trackerData || !Array.isArray(trackerData) || trackerData.length === 0) {
+    return res.json({ insights: null, message: 'Not enough data yet' });
+  }
+
+  // Flatten all legs from all tracked multis
+  const allLegs = [];
+  for (const multi of trackerData) {
+    for (const leg of multi.legs) {
+      if (leg.result !== 'pending') {
+        allLegs.push({
+          player: leg.player,
+          stat: leg.stat,
+          line: leg.line,
+          odds: leg.odds,
+          result: leg.result, // 'hit' or 'miss'
+          venue: multi.venue || '',
+          combinedRating: multi.combinedRating || '',
+          date: multi.date,
+        });
+      }
+    }
+  }
+
+  if (allLegs.length < 5) {
+    return res.json({ insights: null, message: 'Need at least 5 settled legs to generate insights' });
+  }
+
+  // ── ANALYSIS ──────────────────────────────────────────
+
+  // 1. Overall hit rate
+  const hits = allLegs.filter(l => l.result === 'hit').length;
+  const overallHitRate = Math.round((hits / allLegs.length) * 100);
+
+  // 2. Hit rate by stat type
+  const statMap = {};
+  for (const leg of allLegs) {
+    if (!statMap[leg.stat]) statMap[leg.stat] = { hit: 0, total: 0 };
+    statMap[leg.stat].total++;
+    if (leg.result === 'hit') statMap[leg.stat].hit++;
+  }
+  const statRates = Object.entries(statMap)
+    .map(([stat, d]) => ({ stat, hitRate: Math.round((d.hit/d.total)*100), total: d.total }))
+    .sort((a,b) => b.hitRate - a.hitRate);
+
+  // 3. Hit rate by player (min 2 legs)
+  const playerMap = {};
+  for (const leg of allLegs) {
+    const key = leg.player;
+    if (!playerMap[key]) playerMap[key] = { hit: 0, total: 0, stat: leg.stat, lines: [] };
+    playerMap[key].total++;
+    playerMap[key].lines.push(leg.line);
+    if (leg.result === 'hit') playerMap[key].hit++;
+  }
+  const playerRates = Object.entries(playerMap)
+    .filter(([, d]) => d.total >= 2)
+    .map(([player, d]) => ({
+      player,
+      hitRate: Math.round((d.hit/d.total)*100),
+      total: d.total,
+      avgLine: Math.round(d.lines.reduce((a,b)=>a+b,0)/d.lines.length),
+      stat: d.stat,
+    }))
+    .sort((a,b) => b.hitRate - a.hitRate);
+
+  // 4. Line size analysis — are high lines missing more?
+  const disposalLegs = allLegs.filter(l => l.stat === 'disposals');
+  const lowLines = disposalLegs.filter(l => l.line <= 22);
+  const midLines = disposalLegs.filter(l => l.line > 22 && l.line <= 27);
+  const highLines = disposalLegs.filter(l => l.line > 27);
+  const lineAnalysis = {
+    low: { range: '≤22', hitRate: lowLines.length ? Math.round(lowLines.filter(l=>l.result==='hit').length/lowLines.length*100) : null, total: lowLines.length },
+    mid: { range: '23-27', hitRate: midLines.length ? Math.round(midLines.filter(l=>l.result==='hit').length/midLines.length*100) : null, total: midLines.length },
+    high: { range: '28+', hitRate: highLines.length ? Math.round(highLines.filter(l=>l.result==='hit').length/highLines.length*100) : null, total: highLines.length },
+  };
+
+  // 5. Venue analysis
+  const venueMap = {};
+  for (const leg of allLegs) {
+    if (!leg.venue) continue;
+    if (!venueMap[leg.venue]) venueMap[leg.venue] = { hit: 0, total: 0 };
+    venueMap[leg.venue].total++;
+    if (leg.result === 'hit') venueMap[leg.venue].hit++;
+  }
+  const venueRates = Object.entries(venueMap)
+    .filter(([, d]) => d.total >= 3)
+    .map(([venue, d]) => ({ venue, hitRate: Math.round((d.hit/d.total)*100), total: d.total }))
+    .sort((a,b) => b.hitRate - a.hitRate);
+
+  // 6. Multi success by rating
+  const ratingMap = {};
+  for (const multi of trackerData) {
+    const settled = multi.legs.every(l => l.result !== 'pending');
+    if (!settled) continue;
+    const won = multi.legs.every(l => l.result === 'hit');
+    const rating = multi.combinedRating || 'Unknown';
+    if (!ratingMap[rating]) ratingMap[rating] = { won: 0, total: 0 };
+    ratingMap[rating].total++;
+    if (won) ratingMap[rating].won++;
+  }
+  const ratingRates = Object.entries(ratingMap)
+    .map(([rating, d]) => ({ rating, winRate: Math.round((d.won/d.total)*100), total: d.total }));
+
+  // 7. Generate rules for AI prompt injection
+  const rules = [];
+
+  // Best stat types
+  const bestStat = statRates[0];
+  const worstStat = statRates[statRates.length - 1];
+  if (bestStat && bestStat.total >= 3) rules.push(`LEARNT: ${bestStat.stat} legs hit ${bestStat.hitRate}% of the time — prioritise these`);
+  if (worstStat && worstStat.total >= 3 && worstStat.hitRate < 40) rules.push(`LEARNT: ${worstStat.stat} legs only hit ${worstStat.hitRate}% — use sparingly or avoid`);
+
+  // Line size rules
+  if (lineAnalysis.high.total >= 3 && lineAnalysis.high.hitRate < 40) rules.push(`LEARNT: Disposal lines 28+ only hit ${lineAnalysis.high.hitRate}% — be conservative with high lines`);
+  if (lineAnalysis.low.total >= 3 && lineAnalysis.low.hitRate > 60) rules.push(`LEARNT: Disposal lines ≤22 hit ${lineAnalysis.low.hitRate}% — lower lines are more reliable`);
+
+  // Player rules
+  const hotPlayers = playerRates.filter(p => p.hitRate >= 75 && p.total >= 2);
+  const coldPlayers = playerRates.filter(p => p.hitRate <= 33 && p.total >= 2);
+  for (const p of hotPlayers.slice(0, 3)) rules.push(`LEARNT: ${p.player} hits ${p.hitRate}% — reliable pick (avg line ${p.avgLine}+)`);
+  for (const p of coldPlayers.slice(0, 3)) rules.push(`LEARNT: ${p.player} only hits ${p.hitRate}% — avoid or use cautiously`);
+
+  // Venue rules
+  for (const v of venueRates) {
+    if (v.hitRate >= 70) rules.push(`LEARNT: Legs at ${v.venue} hit ${v.hitRate}% — good venue`);
+    if (v.hitRate <= 35) rules.push(`LEARNT: Legs at ${v.venue} only hit ${v.hitRate}% — be conservative here`);
+  }
+
+  res.json({
+    summary: {
+      totalLegs: allLegs.length,
+      overallHitRate,
+      settledMultis: trackerData.filter(t => t.legs.every(l => l.result !== 'pending')).length,
+    },
+    statRates,
+    playerRates: playerRates.slice(0, 10),
+    lineAnalysis,
+    venueRates,
+    ratingRates,
+    rules, // inject these into AI prompt
+  });
+});
+
 app.post('/analyse', async (req, res) => {
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
