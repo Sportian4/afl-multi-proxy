@@ -214,6 +214,7 @@
     <div class="nav-tab active bc" id="tab-matches" onclick="switchTab('matches')">🏆 MATCHES</div>
     <div class="nav-tab bc" id="tab-tracker" onclick="switchTab('tracker')">📊 TRACKER</div>
     <div class="nav-tab bc" id="tab-scanner" onclick="switchTab('scanner')">📸 SCAN</div>
+    <div class="nav-tab bc" id="tab-insights" onclick="switchTab('insights')">🧠 LEARN</div>
   </div>
 </div>
 
@@ -427,6 +428,8 @@ let numLegs=5, focusTeam='both', selectedStats=['disposals','goals','marks','tac
 let riskLevel='balanced', lineBet='none', lineValue='', lineOdds='', context='';
 let result=null, resultTab='recommended';
 let tracker=JSON.parse(localStorage.getItem('afl_tracker')||'[]');
+let insights=null; // learning engine data
+let gamesLoaded=false; // prevent unnecessary API calls
 
 function saveTracker(){localStorage.setItem('afl_tracker',JSON.stringify(tracker));}
 
@@ -440,12 +443,13 @@ function setApiRemaining(val){
 
 function switchTab(tab){
   activeTab=tab;
-  ['matches','tracker','scanner'].forEach(t=>{
+  ['matches','tracker','scanner','insights'].forEach(t=>{
     document.getElementById(`tab-${t}`).classList.toggle('active',t===tab);
   });
   if(tab==='matches'){screen='home';render();}
   else if(tab==='tracker') renderTracker();
   else if(tab==='scanner') renderScanner();
+  else if(tab==='insights') renderInsightsTab();
 }
 
 function render(){
@@ -500,6 +504,7 @@ function renderHome(){
         <button onclick="setLiveOnly(false)" style="padding:5px 12px;border-radius:16px;border:none;font-size:11px;font-weight:700;cursor:pointer;background:${!liveOnly?'var(--navy)':'transparent'};color:${!liveOnly?'#fff':'var(--dim)'}">All</button>
       </div>
     </div>
+    <button onclick="refreshGames()" style="background:none;border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--dim);cursor:pointer;margin-bottom:10px">🔄 Refresh fixtures</button>
     <div id="gamesLoading" style="text-align:center;padding:40px;display:none">
       <div class="spinner" style="margin:0 auto 10px"></div>
       <div style="color:var(--dim);font-size:13px">Loading AFL fixtures...</div>
@@ -510,6 +515,7 @@ function renderHome(){
 }
 
 function setLiveOnly(val){liveOnly=val;render();}
+function refreshGames(){gamesLoaded=false;gameMarketStatus={};marketsChecked=false;render();fetchGames();}
 
 async function fetchGames(){
   gameMarketStatus={}; marketsChecked=false;
@@ -524,6 +530,7 @@ async function fetchGames(){
     if(rem) setApiRemaining(rem);
     games=await res.json();
     if(!Array.isArray(games)) games=[];
+    gamesLoaded=true;
     render();
     checkAllMarkets();
   } catch(e){
@@ -952,16 +959,37 @@ CRITICAL RULES:
 - Include H2H notes in rationale where relevant
 - Flag the weakest leg honestly
 
+${insights&&insights.rules&&insights.rules.length>0?`
+PERSONAL BETTING INTELLIGENCE (learnt from your tracker results — apply these rules):
+${insights.rules.join('\n')}
+`:''}
 Respond ONLY with valid JSON, no markdown, no backticks:
 {"matchSummary":"<2 sentence preview mentioning venue and conditions>","recommendedLegs":[{"player":"<n>","team":"<team>","stat":"<stat>","line":<number>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences using actual 2026 stats, venue and weather>","h2h":"<h2h note or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}`;
+}
+
+async function fetchInsights(){
+  try {
+    const settled=tracker.filter(t=>t.legs.some(l=>l.result!=='pending'));
+    if(settled.length===0) return;
+    const res=await fetch(`${PROXY}/insights`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({trackerData:tracker})
+    });
+    const data=await res.json();
+    if(data.rules && data.rules.length>0) insights=data;
+  } catch(e){ /* silent fail */ }
 }
 
 async function runAnalysis(){
   const btn=document.getElementById('buildBtn');
   const errEl=document.getElementById('aiError');
   btn.disabled=true;
-  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-white"></div> BUILDING YOUR ${numLegs}-LEG MULTI...</div>`;
+  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-white"></div> STEP 1/2 — LOADING YOUR LEARNINGS...</div>`;
   errEl.style.display='none';
+  // Fetch latest insights before building
+  await fetchInsights();
+  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-white"></div> STEP 2/2 — BUILDING YOUR ${numLegs}-LEG MULTI...</div>`;
   try {
     const text=await callClaude(buildPrompt(),1500);
     result=JSON.parse(text.replace(/```json|```/g,'').trim());
@@ -1122,6 +1150,117 @@ Respond ONLY with valid JSON, no markdown:
   }
 }
 
+// ── INSIGHTS TAB ─────────────────────────────────────
+function renderInsightsTab(){
+  document.getElementById('main').innerHTML=buildInsightsHTML();
+}
+
+function buildInsightsHTML(){
+  // Always try to fetch fresh insights when tab opens
+  fetchInsights().then(()=>{
+    if(insights) document.getElementById('main').innerHTML=buildInsightsHTML();
+  });
+
+  const settled=tracker.filter(t=>t.legs.some(l=>l.result!=='pending'));
+  if(settled.length===0) return `<div class="fu">
+    <div class="screen-title bc">🧠 LEARNING ENGINE</div>
+    <div class="empty"><div class="empty-icon">🧠</div>
+      <div class="empty-title bc">NOT ENOUGH DATA YET</div>
+      <div class="empty-sub">Mark results in your tracker to start building intelligence.<br>Need at least 5 settled legs.</div>
+    </div></div>`;
+
+  if(!insights) return `<div class="fu">
+    <div class="screen-title bc">🧠 LEARNING ENGINE</div>
+    <div class="status-row"><div class="spinner-sm"></div> Analysing your results...</div>
+  </div>`;
+
+  const { summary, statRates, playerRates, lineAnalysis, venueRates, ratingRates, rules } = insights;
+
+  // Stat rates cards
+  const statCards = statRates.map(s=>{
+    const col = s.hitRate>=60?'var(--green)':s.hitRate>=45?'var(--gold-bright)':'var(--red)';
+    return `<div class="summary-chip">
+      <div class="summary-chip-label">${s.stat.toUpperCase()}</div>
+      <div class="summary-chip-val" style="color:${col}">${s.hitRate}%</div>
+      <div style="font-size:9px;color:var(--dim)">${s.total} legs</div>
+    </div>`;
+  }).join('');
+
+  // Player rates
+  const playerCards = playerRates.length===0
+    ? '<div style="font-size:12px;color:var(--dim)">Need more data</div>'
+    : playerRates.map(p=>{
+        const col=p.hitRate>=70?'var(--green)':p.hitRate>=50?'var(--gold-bright)':'var(--red)';
+        const emoji=p.hitRate>=70?'🔥':p.hitRate>=50?'👍':'⚠️';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--navy)">${emoji} ${p.player}</div>
+            <div style="font-size:10px;color:var(--dim)">${p.total} legs · avg line ${p.avgLine}+</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:${col}">${p.hitRate}%</div>
+        </div>`;
+      }).join('');
+
+  // Line analysis
+  const lineCards = Object.values(lineAnalysis).filter(l=>l.total>0).map(l=>{
+    const col=l.hitRate>=60?'var(--green)':l.hitRate>=45?'var(--gold-bright)':'var(--red)';
+    return `<div class="summary-chip">
+      <div class="summary-chip-label">${l.range} disp</div>
+      <div class="summary-chip-val" style="color:${col}">${l.hitRate!==null?l.hitRate+'%':'—'}</div>
+      <div style="font-size:9px;color:var(--dim)">${l.total} legs</div>
+    </div>`;
+  }).join('');
+
+  // Rules summary
+  const rulesHTML = rules.length===0
+    ? '<div style="font-size:12px;color:var(--dim)">Not enough data for rules yet</div>'
+    : rules.map(r=>`<div style="padding:7px 10px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text);margin-bottom:6px;border-left:3px solid var(--navy)">${r}</div>`).join('');
+
+  return `<div class="fu">
+    <div class="screen-title bc">🧠 LEARNING ENGINE</div>
+    <div class="screen-sub">Based on ${summary.totalLegs} settled legs across ${summary.settledMultis} multis</div>
+
+    <div class="summary-bar" style="margin-bottom:14px">
+      <div class="summary-chip"><div class="summary-chip-label">Legs hit</div><div class="summary-chip-val">${summary.overallHitRate}%</div></div>
+      <div class="summary-chip"><div class="summary-chip-label">Total legs</div><div class="summary-chip-val">${summary.totalLegs}</div></div>
+      <div class="summary-chip"><div class="summary-chip-label">Multis</div><div class="summary-chip-val">${summary.settledMultis}</div></div>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div class="sl" style="margin-bottom:10px">📊 HIT RATE BY STAT TYPE</div>
+      <div class="summary-bar" style="flex-wrap:wrap;gap:6px">${statCards}</div>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div class="sl" style="margin-bottom:10px">📏 DISPOSAL LINE SIZE ANALYSIS</div>
+      <div class="summary-bar">${lineCards}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:6px">Lower lines hit more consistently — use this to calibrate your selections</div>
+    </div>
+
+    ${playerRates.length>0?`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div class="sl" style="margin-bottom:6px">👤 YOUR PLAYER HIT RATES</div>
+      ${playerCards}
+    </div>`:''}
+
+    ${venueRates.length>0?`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div class="sl" style="margin-bottom:10px">🏟️ VENUE PERFORMANCE</div>
+      ${venueRates.map(v=>{
+        const col=v.hitRate>=60?'var(--green)':v.hitRate>=45?'var(--gold-bright)':'var(--red)';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:13px;color:var(--text)">${v.venue}</div>
+          <div style="font-weight:800;color:${col}">${v.hitRate}% <span style="font-size:10px;color:var(--dim);font-weight:400">(${v.total} legs)</span></div>
+        </div>`;
+      }).join('')}
+    </div>`:''}
+
+    <div style="background:var(--navy);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;color:#aac4ff;font-weight:700;letter-spacing:1px;margin-bottom:10px">🤖 AI LEARNS THESE RULES AUTOMATICALLY</div>
+      ${rulesHTML.replace(/color:var\(--text\)/g,'color:#fff').replace(/background:var\(--bg3\)/g,'background:rgba(255,255,255,0.1)').replace(/border-left:3px solid var\(--navy\)/g,'border-left:3px solid var(--gold-bright)')}
+      <div style="font-size:10px;color:#aac4ff;margin-top:8px">These rules are automatically injected into every future multi build</div>
+    </div>
+  </div>`;
+}
+
 // ── HELPERS ───────────────────────────────────────────
 function setNumLegs(n){numLegs=n;redrawSetup();}
 function toggleStat(id){selectedStats=selectedStats.includes(id)?selectedStats.filter(s=>s!==id):[...selectedStats,id];redrawSetup();}
@@ -1142,7 +1281,7 @@ function setTab(t){
   const alt=(result.alternativeLegs||[]).length?(result.alternativeLegs||[]).map(leg=>legCardHTML(leg,99)).join(''):`<div style="color:var(--dimmer);text-align:center;padding:24px;font-size:13px">No alternatives suggested</div>`;
   document.getElementById('legsList').innerHTML=t==='recommended'?rec:alt;
 }
-function goHome(){screen='home';selectedGame=null;markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;venue=null;render();fetchGames();}
+function goHome(){screen='home';selectedGame=null;markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;venue=null;render();if(!gamesLoaded) fetchGames();}
 function goSetup(){
   screen='setup';render();
   document.getElementById('marketsLoading').style.display='none';
@@ -1152,7 +1291,7 @@ function goSetup(){
 }
 
 render();
-fetchGames();
+if(!gamesLoaded) fetchGames();
 
 // Register service worker for PWA home screen install
 if ('serviceWorker' in navigator) {
