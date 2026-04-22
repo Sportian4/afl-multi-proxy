@@ -389,4 +389,807 @@ textarea{resize:vertical;padding:10px 13px;}
 .summary-bar{display:flex;gap:8px;margin-bottom:16px;}
 .summary-chip{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;}
 .summary-chip-label{font-size:9px;color:var(--dim);letter-spacing:1.5px;margin-bottom:3px;font-weight:600;text-transform:uppercase;}
-.summary-chip-val{font-f
+.summary-chip-val{font-family:var(--font-display);font-size:22px;color:#fff;letter-spacing:0.5px;}
+
+/* MISC */
+.empty{text-align:center;padding:48px 20px;color:var(--dim);}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:0.6;}
+.empty-title{font-family:var(--font-display);font-size:22px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;}
+.empty-sub{font-size:13px;line-height:1.6;}
+.disclaimer{text-align:center;margin-top:20px;font-size:10px;color:var(--dim);line-height:1.8;letter-spacing:0.5px;}
+.back-btn{background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:0.5px;margin-bottom:16px;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.back-btn:hover{color:var(--gold);}
+.status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:10px;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-top">
+    <div class="logo-wrap">
+      <div class="logo-icon">🏉</div>
+      <div class="logo-text">
+        <div class="logo-title">AFL MULTI</div>
+        <div class="logo-sub">Live Odds · AI · 2026</div>
+      </div>
+    </div>
+    <div class="api-pill" id="apiBadge" style="display:none">
+      <span style="font-size:9px;color:var(--dim);letter-spacing:1px">API</span>
+      <span class="api-count" id="apiVal">—</span>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" id="tab-matches" onclick="switchTab('matches')">🏆 Matches</div>
+    <div class="nav-tab" id="tab-tracker" onclick="switchTab('tracker')">📊 Tracker</div>
+    <div class="nav-tab" id="tab-insights" onclick="switchTab('insights')">🧠 Learn</div>
+    <div class="nav-tab" id="tab-scanner" onclick="switchTab('scanner')">📸 Scan</div>
+  </div>
+</div>
+
+<div id="main"></div>
+
+<script>
+const PROXY = 'https://afl-multi-proxy.onrender.com';
+
+// ── VENUE DATA ─────────────────────────────────────────
+const VENUES = {
+  'mcg':{name:'MCG',city:'Melbourne',emoji:'🏟️',length:160,width:141,size:'Large',orientation:'N-S',lat:-37.82,lon:144.9834,disposalMod:+1.5,goalsMod:+0.2,tackleMod:-0.5,bestStat:'disposals',notes:['Large ground — favours high disposal midfielders','N-S orientation — wind impacts kicking','Big scores common — goals legs viable']},
+  'marvel stadium':{name:'Marvel Stadium',city:'Melbourne',emoji:'🏟️',length:160,width:129,size:'Medium',orientation:'E-W',lat:-37.8165,lon:144.9476,disposalMod:-1.0,goalsMod:-0.1,tackleMod:+1.0,bestStat:'tackles',notes:['Narrower ground — more contested','Roof closed in bad weather','Higher tackle and clearance counts']},
+  'optus stadium':{name:'Optus Stadium',city:'Perth',emoji:'🏟️',length:165,width:130,size:'Large',orientation:'E-W',lat:-31.9505,lon:115.8872,disposalMod:+2.0,goalsMod:+0.1,tackleMod:-0.5,bestStat:'disposals',notes:['Large modern ground — high disposal counts','Fast dry surface typical','Strong home advantage Eagles/Dockers']},
+  'adelaide oval':{name:'Adelaide Oval',city:'Adelaide',emoji:'🏟️',length:167,width:124,size:'Large',orientation:'E-W',lat:-34.9156,lon:138.5963,disposalMod:+1.5,goalsMod:+0.1,tackleMod:-0.3,bestStat:'disposals',notes:['One of the longest grounds in comp','Sea breezes common in afternoon','Long ground suits outside runners']},
+  'gabba':{name:'The Gabba',city:'Brisbane',emoji:'🏟️',length:156,width:138,size:'Medium',orientation:'N-S',lat:-27.4858,lon:153.0381,disposalMod:-0.5,goalsMod:0,tackleMod:+0.8,bestStat:'tackles',notes:['Compact — high contest rates','Hot/humid — fatigue factor late','Very strong Brisbane home advantage']},
+  'gmhba stadium':{name:'GMHBA Stadium',city:'Geelong',emoji:'🏟️',length:170,width:115,size:'Small',orientation:'N-S',lat:-38.1579,lon:144.3552,disposalMod:-1.5,goalsMod:-0.2,tackleMod:+1.5,bestStat:'tackles',notes:['Narrowest ground in comp','Exposed to wind — brutal in winter','Fortress for Geelong']},
+  'scg':{name:'SCG',city:'Sydney',emoji:'🏟️',length:149,width:136,size:'Small',orientation:'N-S',lat:-33.8915,lon:151.2247,disposalMod:-2.0,goalsMod:-0.3,tackleMod:+2.0,bestStat:'tackles',notes:['Smallest AFL ground — highly congested','Big tackle and clearance counts','Goals hard to come by']},
+  'engie stadium':{name:'ENGIE Stadium',city:'Sydney',emoji:'🏟️',length:160,width:120,size:'Medium',orientation:'N-S',lat:-33.8474,lon:151.0665,disposalMod:0,goalsMod:0,tackleMod:+0.5,bestStat:'disposals',notes:['Medium ground, slightly narrow','GWS home ground']},
+  'people first stadium':{name:'People First Stadium',city:'Gold Coast',emoji:'🏟️',length:160,width:134,size:'Medium',orientation:'N-S',lat:-28.0089,lon:153.4003,disposalMod:0,goalsMod:+0.1,tackleMod:0,bestStat:'disposals',notes:['Standard sized ground','Hot/humid conditions typical']},
+  'utas stadium':{name:'UTAS Stadium',city:'Launceston',emoji:'🏟️',length:165,width:135,size:'Large',orientation:'N-S',lat:-41.4347,lon:147.1349,disposalMod:-1.0,goalsMod:-0.3,tackleMod:0,bestStat:'disposals',notes:['Large open ground','Cold and wet very common','Exposed and windy']},
+};
+const TEAM_VENUE={'hawthorn hawks':'marvel stadium','melbourne demons':'mcg','collingwood magpies':'mcg','richmond tigers':'mcg','carlton blues':'mcg','essendon bombers':'mcg','north melbourne kangaroos':'marvel stadium','western bulldogs':'marvel stadium','st kilda saints':'marvel stadium','geelong cats':'gmhba stadium','port adelaide power':'adelaide oval','adelaide crows':'adelaide oval','west coast eagles':'optus stadium','fremantle dockers':'optus stadium','brisbane lions':'gabba','sydney swans':'scg','greater western sydney giants':'engie stadium','gws giants':'engie stadium','gold coast suns':'people first stadium'};
+function getVenue(homeTeam){const k=TEAM_VENUE[homeTeam.toLowerCase()]||'mcg';return{key:k,...VENUES[k]};}
+
+const STAT_TYPES=[{id:'disposals',label:'Disposals',emoji:'🏉'},{id:'goals',label:'Goals',emoji:'🥅'},{id:'marks',label:'Marks',emoji:'🙌'},{id:'tackles',label:'Tackles',emoji:'💪'},{id:'hitouts',label:'Hit-Outs',emoji:'✊'},{id:'clearances',label:'Clearances',emoji:'⚡'},{id:'kicks',label:'Kicks',emoji:'👟'},{id:'handballs',label:'Handballs',emoji:'🤚'}];
+const STAT_EMOJI={disposals:'🏉',goals:'🥅',marks:'🙌',tackles:'💪',hitouts:'✊',clearances:'⚡',kicks:'👟',handballs:'🤚',line:'📋'};
+const RATING_COLOR={Risky:'#ff4444',Reasonable:'#ff8c00',Solid:'#f0a500',Strong:'#00e676',Elite:'#2979ff'};
+const BOOKMAKER_LABELS={'sportsbet':'Sportsbet','tab':'TAB','ladbrokes':'Ladbrokes','neds':'Neds','betfair':'Betfair','unibet':'Unibet','betr':'Betr','pointsbet':'Pointsbet'};
+
+// State
+let activeTab='matches';
+let screen='home',games=[],selectedGame=null;
+let liveOnly=false,gameMarketStatus={},marketsChecked=false,gamesLoaded=false;
+let markets=[],playerStats=[],lineups={home:[],away:[]};
+let weather=null,venue=null;
+let numLegs=5,focusTeam='both',selectedStats=['disposals','goals','marks','tackles'];
+let riskLevel='balanced',lineBet='none',lineValue='',lineOdds='',context='';
+let result=null,resultTab='recommended';
+let tracker=JSON.parse(localStorage.getItem('afl_tracker')||'[]');
+let insights=null;
+
+function saveTracker(){localStorage.setItem('afl_tracker',JSON.stringify(tracker));}
+function fmt(d){return new Date(d).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
+function setApiRemaining(val){
+  if(!val) return;
+  document.getElementById('apiBadge').style.display='flex';
+  const el=document.getElementById('apiVal');
+  el.textContent=val;
+  el.className='api-count'+(parseInt(val)<50?' low':'');
+}
+
+function switchTab(tab){
+  activeTab=tab;
+  ['matches','tracker','insights','scanner'].forEach(t=>{
+    const el=document.getElementById(`tab-${t}`);
+    if(el) el.classList.toggle('active',t===tab);
+  });
+  if(tab==='matches'){screen='home';render();}
+  else if(tab==='tracker') renderTracker();
+  else if(tab==='insights') renderInsightsTab();
+  else if(tab==='scanner') renderScanner();
+}
+
+function render(){
+  const main=document.getElementById('main');
+  if(screen==='home') main.innerHTML=renderHome();
+  else if(screen==='setup') main.innerHTML=renderSetup();
+  else if(screen==='results') main.innerHTML=renderResults();
+}
+
+// ── HOME ──────────────────────────────────────────────
+function renderHome(){
+  const visibleGames=liveOnly?games.filter(g=>gameMarketStatus[g.id]===true):games;
+  const liveCount=games.filter(g=>gameMarketStatus[g.id]===true).length;
+
+  const cards=visibleGames.length===0
+    ?`<div class="empty"><div class="empty-icon">🏟️</div>
+      <div class="empty-title">${liveOnly&&games.length>0?'NO LIVE MARKETS':'NO GAMES FOUND'}</div>
+      <div class="empty-sub">${liveOnly&&games.length>0?'Player prop markets open 1-2 days before game day.<br>Switch to All Games to build in AI-only mode.':'Check back closer to round day.'}</div></div>`
+    :visibleGames.map(g=>{
+      const hasM=gameMarketStatus[g.id]===true;
+      const checking=gameMarketStatus[g.id]==='checking';
+      const v=getVenue(g.home_team);
+      return `<div class="game-card fu ${hasM?'has-odds':''}" onclick="selectGame('${g.id}')">
+        <div class="game-time"><span class="live-dot" style="${hasM?'':'background:var(--dim);animation:none;'}"></span>${fmt(g.commence_time)}</div>
+        <div class="game-teams">
+          <div class="game-team-names">
+            <div class="game-home bb">${g.home_team}</div>
+            <div class="game-vs">vs</div>
+            <div class="game-away bb">${g.away_team}</div>
+          </div>
+          <div class="game-badge ${checking?'checking':hasM?'live':'ai'}">
+            ${checking?`<div class="spinner-sm"></div>`:hasM?`<div class="live-dot"></div>LIVE ODDS`:'AI ONLY'}
+          </div>
+        </div>
+        <div class="game-footer">
+          <div class="game-venue">${v.emoji} ${v.name} · ${v.length}×${v.width}m</div>
+          <div class="game-cta">BUILD MULTI →</div>
+        </div>
+      </div>`;
+    }).join('');
+
+  return `<div class="fu">
+    <div class="filter-row">
+      <div class="filter-info">
+        ${!marketsChecked?`<span class="spinner-sm" style="margin-right:6px"></span>Checking markets...`
+          :liveCount>0?`<span style="color:var(--green);font-weight:600">⚡ ${liveCount} with live odds</span>`
+          :'<span style="color:var(--dim)">No live odds this round</span>'}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="refreshGames()" style="background:none;border:1px solid var(--border);border-radius:16px;padding:4px 10px;font-size:10px;color:var(--dim);cursor:pointer;letter-spacing:0.5px;">↺ Refresh</button>
+        <div class="toggle-pills">
+          <button class="toggle-pill ${liveOnly?'active':''}" onclick="setLiveOnly(true)">⚡ Live</button>
+          <button class="toggle-pill ${!liveOnly?'active':''}" onclick="setLiveOnly(false)">All</button>
+        </div>
+      </div>
+    </div>
+    <div id="gamesLoading" style="text-align:center;padding:48px;display:none">
+      <div class="spinner" style="margin:0 auto 12px"></div>
+      <div style="color:var(--muted);font-size:13px">Loading fixtures...</div>
+    </div>
+    <div id="gamesError" class="error-box" style="display:none"></div>
+    ${cards}
+  </div>`;
+}
+
+function setLiveOnly(v){liveOnly=v;render();}
+function refreshGames(){gamesLoaded=false;gameMarketStatus={};marketsChecked=false;render();fetchGames();}
+
+async function fetchGames(){
+  const loading=document.getElementById('gamesLoading');
+  const errEl=document.getElementById('gamesError');
+  if(loading) loading.style.display='block';
+  if(errEl) errEl.style.display='none';
+  try{
+    const res=await fetch(`${PROXY}/games`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rem=res.headers.get('x-requests-remaining');
+    if(rem) setApiRemaining(rem);
+    games=await res.json();
+    if(!Array.isArray(games)) games=[];
+    gamesLoaded=true;
+    render();
+    checkAllMarkets();
+  }catch(e){
+    if(loading) loading.style.display='none';
+    if(errEl){errEl.style.display='block';errEl.innerHTML=`⚠️ Couldn't load fixtures: ${e.message} <button class="retry-btn" onclick="fetchGames()">Retry</button>`;}
+  }
+}
+
+async function checkAllMarkets(){
+  for(const g of games){
+    try{
+      const res=await fetch(`${PROXY}/markets/${g.id}`);
+      const data=await res.json();
+      const rem=res.headers.get('x-requests-remaining');
+      if(rem) setApiRemaining(rem);
+      let hasProps=false;
+      if(data.bookmakers){
+        for(const bm of data.bookmakers)
+          for(const mkt of bm.markets)
+            if(mkt.key.startsWith('player_')&&mkt.outcomes&&mkt.outcomes.length>0){hasProps=true;break;}
+      }
+      gameMarketStatus[g.id]=hasProps;
+    }catch(e){gameMarketStatus[g.id]=false;}
+    if(screen==='home') render();
+  }
+  marketsChecked=true;
+  if(games.some(g=>gameMarketStatus[g.id]===true)) liveOnly=true;
+  if(screen==='home') render();
+}
+
+function selectGame(id){
+  selectedGame=games.find(g=>g.id===id);
+  markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;
+  venue=getVenue(selectedGame.home_team);
+  screen='setup';render();
+  fetchMarkets();
+  fetchWeather();
+}
+
+// ── WEATHER ───────────────────────────────────────────
+function weatherIcon(code){if(code<=1)return'☀️';if(code<=3)return'🌤️';if(code<=48)return'☁️';if(code<=67)return'🌧️';return'⛈️';}
+
+async function fetchWeather(){
+  if(!venue) return;
+  try{
+    const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${venue.lat}&longitude=${venue.lon}&current=temperature_2m,weathercode,windspeed_10m,precipitation,apparent_temperature&timezone=auto`);
+    const data=await res.json();
+    const c=data.current;
+    weather={temp:Math.round(c.temperature_2m),feelsLike:Math.round(c.apparent_temperature),wind:Math.round(c.windspeed_10m),rain:c.precipitation>0,rainMm:c.precipitation,code:c.weathercode};
+    if(screen==='setup') render();
+  }catch(e){weather=null;}
+}
+
+function getWeatherAlerts(){
+  if(!weather) return[];
+  const a=[];
+  if(weather.rainMm>2) a.push({type:'red',msg:`🌧️ Heavy rain (${weather.rainMm}mm) — lower disposal & goals lines. Favour tackle legs.`});
+  else if(weather.rain) a.push({type:'amber',msg:`🌦️ Light rain — slight impact on play. Be conservative.`});
+  if(weather.wind>40) a.push({type:'red',msg:`💨 Very strong wind (${weather.wind}km/h) — avoid goals legs entirely.`});
+  else if(weather.wind>25) a.push({type:'amber',msg:`💨 Moderate wind (${weather.wind}km/h) — goals legs higher risk.`});
+  if(weather.temp<8) a.push({type:'amber',msg:`🥶 Cold (${weather.temp}°C) — expect more handballs, disposals steady.`});
+  if(a.length===0) a.push({type:'ok',msg:`✅ Good conditions — all stat types viable.`});
+  return a;
+}
+
+// ── MARKETS ───────────────────────────────────────────
+async function fetchMarkets(){
+  const loading=document.getElementById('marketsLoading');
+  if(loading) loading.style.display='flex';
+  try{
+    const res=await fetch(`${PROXY}/markets/${selectedGame.id}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rem=res.headers.get('x-requests-remaining');
+    if(rem) setApiRemaining(rem);
+    const data=await res.json();
+    const parsed=[];
+    if(data.bookmakers){
+      for(const bm of data.bookmakers)
+        for(const mkt of bm.markets)
+          for(const out of mkt.outcomes)
+            if(out.point!==undefined&&out.name==='Over')
+              parsed.push({bookmaker:bm.title,bookmakerKey:bm.key,player:out.description||out.name,stat:mkt.key.replace('player_',''),line:Math.ceil(out.point),odds:out.price});
+    }
+    markets=parsed.filter(m=>m.odds<15);
+    if(loading) loading.style.display='none';
+    renderMarketsBadge();
+    if(markets.length>0) fetchPlayerStats(markets.map(m=>m.player));
+  }catch(e){
+    if(loading) loading.style.display='none';
+    const w=document.getElementById('marketsWarn');
+    if(w){w.style.display='block';w.textContent='⚠️ No player prop markets available — AI-only mode active.';}
+  }
+}
+
+// Build odds comparison map: player+stat+line -> [{bookmaker, odds}]
+function buildOddsMap(){
+  const map={};
+  for(const m of markets){
+    const key=`${m.player}|${m.stat}|${m.line}`;
+    if(!map[key]) map[key]=[];
+    map[key].push({bookmaker:m.bookmaker,key:m.bookmakerKey,odds:m.odds});
+  }
+  return map;
+}
+
+async function fetchPlayerStats(playerNames){
+  const el=document.getElementById('statsStatus');
+  if(el) el.style.display='flex';
+  try{
+    const res=await fetch(`${PROXY}/stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({players:[...new Set(playerNames)].slice(0,25)})});
+    const data=await res.json();
+    if(data.players&&data.players.length>0){playerStats=data.players;renderStatsBadge();}
+  }catch(e){}
+  if(el) el.style.display='none';
+}
+
+function renderMarketsBadge(){
+  const el=document.getElementById('marketsBadge');
+  if(!el) return;
+  if(markets.length===0){
+    el.innerHTML=`<div class="status-badge amber"><div class="badge-label">No live markets</div>AI-only mode active — odds not available yet.</div>`;
+  }else{
+    const groups=markets.reduce((a,m)=>{a[m.stat]=(a[m.stat]||0)+1;return a;},{});
+    const books=[...new Set(markets.map(m=>m.bookmaker))];
+    const tags=Object.entries(groups).map(([s,c])=>`<span class="lineup-name" style="color:var(--green);border-color:rgba(0,230,118,0.2);background:var(--green-dim)">✓ ${s} (${c})</span>`).join('');
+    el.innerHTML=`<div class="status-badge green">
+      <div class="badge-label"><span class="live-dot"></span>Live odds loaded · ${books.join(' · ')}</div>
+      <div class="lineup-names" style="margin-top:6px">${tags}</div>
+    </div>`;
+  }
+}
+function renderStatsBadge(){
+  const el=document.getElementById('statsBadge');
+  if(!el||playerStats.length===0) return;
+  el.innerHTML=`<div class="status-badge blue"><div class="badge-label">📊 Live 2026 stats · ${playerStats.length} players · aflml.com</div></div>`;
+}
+
+// ── SETUP ─────────────────────────────────────────────
+function renderSetup(){
+  const home=selectedGame.home_team,away=selectedGame.away_team;
+  const homeLast=home.split(' ').slice(-1)[0],awayLast=away.split(' ').slice(-1)[0];
+
+  const legBtns=[3,4,5,6,7,8].map(n=>`<button class="leg-btn ${numLegs===n?'active':''}" onclick="setNumLegs(${n})">${n}</button>`).join('');
+  const statPills=STAT_TYPES.map(s=>`<button class="stat-pill ${selectedStats.includes(s.id)?'active':''}" onclick="toggleStat('${s.id}')">${s.emoji} ${s.label}</button>`).join('');
+  const lineOpts=[{val:'none',label:'None'},{val:'home',label:`🏠 ${homeLast}`},{val:'away',label:`✈️ ${awayLast}`},{val:'ai',label:'🤖 AI'}]
+    .map(o=>`<button class="opt-btn ${lineBet===o.val?'active-blue':''}" onclick="setLineBet('${o.val}')">${o.label}</button>`).join('');
+  const lineInputs=(lineBet==='home'||lineBet==='away')?`
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <div style="flex:1"><div class="input-label">Line</div><input type="number" step="0.5" value="${lineValue}" placeholder="e.g. 12.5" oninput="lineValue=this.value"></div>
+      <div style="flex:1"><div class="input-label">Odds</div><input type="number" step="0.01" value="${lineOdds}" placeholder="e.g. 1.90" oninput="lineOdds=this.value"></div>
+    </div>`:'';
+  const lineNote=lineBet!=='none'?`<div style="margin-top:8px;font-size:11px;color:var(--dim)">${lineBet==='ai'?'AI decides whether to include a line leg':'Line leg counts as 1 of your '+numLegs+' legs'}</div>`:'';
+  const teamOpts=[{val:'both',label:'🏉 Both'},{val:'home',label:`🏠 ${homeLast}`},{val:'away',label:`✈️ ${awayLast}`}]
+    .map(o=>`<button class="opt-btn ${focusTeam===o.val?'active-gold':''}" onclick="setFocusTeam('${o.val}')">${o.label}</button>`).join('');
+  const riskOpts=[{val:'safe',label:'🛡️ Safe',desc:'High confidence'},{val:'balanced',label:'⚖️ Balanced',desc:'Mix of safe & value'},{val:'aggressive',label:'🔥 Aggressive',desc:'Big odds'}]
+    .map(o=>`<button class="opt-btn ${riskLevel===o.val?'active-gold':''}" onclick="setRiskLevel('${o.val}')"><div style="font-size:13px;font-weight:600">${o.label}</div><div class="opt-btn-desc">${o.desc}</div></button>`).join('');
+
+  // Venue card
+  const venueHTML=venue?`<div class="venue-card">
+    <div class="venue-header">
+      <div style="font-size:28px">${venue.emoji}</div>
+      <div>
+        <div class="venue-name">${venue.name}</div>
+        <div class="venue-dims">${venue.length}m × ${venue.width}m · ${venue.orientation} · ${venue.size} ground</div>
+      </div>
+    </div>
+    <div class="venue-mods">
+      <div class="venue-mod ${venue.disposalMod>0?'pos':venue.disposalMod<0?'neg':'neu'}">Disposals ${venue.disposalMod>0?'+':''}${venue.disposalMod}</div>
+      <div class="venue-mod ${venue.goalsMod>0?'pos':venue.goalsMod<0?'neg':'neu'}">Goals ${venue.goalsMod>0?'+':''}${venue.goalsMod}</div>
+      <div class="venue-mod ${venue.tackleMod>0?'pos':venue.tackleMod<0?'neg':'neu'}">Tackles ${venue.tackleMod>0?'+':''}${venue.tackleMod}</div>
+      <div class="venue-mod pos">Best: ${venue.bestStat}</div>
+    </div>
+    <div class="venue-notes">${venue.notes.map(n=>`· ${n}`).join('<br>')}</div>
+  </div>`:'';
+
+  // Weather card
+  const alerts=getWeatherAlerts();
+  const weatherHTML=weather?`<div class="weather-card">
+    <div class="weather-main">
+      <div class="weather-emoji">${weatherIcon(weather.code)}</div>
+      <div>
+        <div class="weather-temp">${weather.temp}°<span style="font-size:18px;color:var(--muted)"> / ${weather.feelsLike}°C</span></div>
+        <div class="weather-detail">Wind ${weather.wind}km/h · Rain ${weather.rainMm>0?weather.rainMm+'mm':'none'}</div>
+      </div>
+    </div>
+    <div class="weather-alerts">${alerts.map(a=>`<div class="weather-alert ${a.type}">${a.msg}</div>`).join('')}</div>
+  </div>`:'<div class="status-row"><div class="spinner-sm"></div> Loading weather...</div>';
+
+  return `<div class="fu">
+    <button class="back-btn" onclick="goHome()">← Back to fixtures</button>
+    <div class="match-header">
+      <div class="match-header-label">Selected Match</div>
+      <div class="match-header-teams bb">${home} <span class="match-header-vs">vs</span> ${away}</div>
+      <div class="match-header-meta">📅 ${fmt(selectedGame.commence_time)}</div>
+    </div>
+
+    ${venueHTML}
+    ${weatherHTML}
+
+    <div class="status-row" id="marketsLoading" style="display:none"><div class="spinner-sm"></div> Fetching live odds...</div>
+    <div class="status-row" id="statsStatus" style="display:none"><div class="spinner-sm"></div> Loading player stats...</div>
+    <div id="marketsBadge"></div>
+    <div id="statsBadge"></div>
+    <div id="marketsWarn" class="warn-box" style="display:none"></div>
+
+    <div style="margin-bottom:18px"><div class="sl">Number of legs</div><div class="leg-btns">${legBtns}</div></div>
+    <div style="margin-bottom:18px"><div class="sl">Stat types</div><div class="stat-pills">${statPills}</div></div>
+    <div style="margin-bottom:18px"><div class="sl">Match line bet</div><div class="opt-btns">${lineOpts}</div>${lineInputs}${lineNote}</div>
+    <div style="margin-bottom:18px"><div class="sl">Team focus</div><div class="opt-btns">${teamOpts}</div></div>
+    <div style="margin-bottom:18px"><div class="sl">Risk appetite</div><div class="opt-btns">${riskOpts}</div></div>
+    <div style="margin-bottom:20px">
+      <div class="sl">Match context <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+      <textarea rows="3" placeholder="Key injuries, intel, anything relevant..." oninput="context=this.value">${context}</textarea>
+    </div>
+
+    <div id="aiError" style="color:var(--red);font-size:13px;margin-bottom:12px;display:none"></div>
+    <button class="build-btn" id="buildBtn" onclick="runAnalysis()">⚡ BUILD MY ${numLegs}-LEG MULTI</button>
+    <div class="disclaimer">Please gamble responsibly · 1800 858 858</div>
+  </div>`;
+}
+
+// ── RESULTS ───────────────────────────────────────────
+function renderResults(){
+  if(!result) return '';
+  const home=selectedGame.home_team,away=selectedGame.away_team;
+  const oddsMap=buildOddsMap();
+  const livOdds=result.recommendedLegs?.filter(l=>l.odds).reduce((a,l)=>a*parseFloat(l.odds),1).toFixed(2);
+  const oddsDisplay=livOdds&&parseFloat(livOdds)>1?`$${livOdds}`:result.estimatedOdds||'—';
+  const ratingCol=RATING_COLOR[result.combinedRating]||'#f0a500';
+  const chips=[
+    {label:'Rating',val:result.combinedRating,col:ratingCol},
+    {label:'Legs',val:result.recommendedLegs?.length,col:'#fff'},
+    {label:'Est. Odds',val:oddsDisplay,col:'var(--gold)'},
+  ].map(c=>`<div class="stat-chip"><div class="stat-chip-label">${c.label}</div><div class="stat-chip-val" style="color:${c.col}">${c.val}</div></div>`).join('');
+  const warning=result.warningLegs?.length?`<div class="warn-box">⚠️ <strong>Weakest leg:</strong> ${result.warningLegs.join(', ')} — check alternatives</div>`:'';
+  const alerts=getWeatherAlerts();
+  const condNote=`<div class="info-box" style="margin-bottom:12px;font-size:11px">
+    ${venue?`🏟️ ${venue.name} (${venue.size} ground · best: ${venue.bestStat}) · `:''}
+    ${weather?`${weatherIcon(weather.code)} ${weather.temp}°C · Wind ${weather.wind}km/h${weather.rain?' · 🌧️ WET':''}`:''}
+  </div>`;
+  const recLegs=(result.recommendedLegs||[]).map((leg,i)=>legCardHTML(leg,i,oddsMap)).join('');
+  const altLegs=(result.alternativeLegs||[]).length?(result.alternativeLegs||[]).map(leg=>legCardHTML(leg,99,oddsMap)).join(''):`<div class="empty" style="padding:24px"><div style="color:var(--dim);font-size:13px">No alternatives suggested</div></div>`;
+  const sbLink=`https://www.sportsbet.com.au/betting/australian-rules-football?q=${home.replace(/ /g,'+')}`;
+
+  return `<div class="fu">
+    <div class="result-header">
+      <div class="result-match bb">${home.toUpperCase()} vs ${away.toUpperCase()}</div>
+      <div class="result-summary">${result.matchSummary}</div>
+    </div>
+    <div class="stat-chips">${chips}</div>
+    ${condNote}
+    <div class="ai-tip"><strong>🤖 AI TIP</strong><br>${result.combinedTip}</div>
+    ${warning}
+    <div class="result-tabs">
+      <button class="result-tab ${resultTab==='recommended'?'active':''}" onclick="setTab('recommended')">✅ My Multi (${result.recommendedLegs?.length})</button>
+      <button class="result-tab ${resultTab==='alternatives'?'active':''}" onclick="setTab('alternatives')">🔄 Alternatives (${result.alternativeLegs?.length||0})</button>
+    </div>
+    <div id="legsList">${resultTab==='recommended'?recLegs:altLegs}</div>
+    <div class="bottom-btns">
+      <button class="ghost-btn" onclick="goSetup()">← Tweak</button>
+      <button class="ghost-btn flex1" onclick="saveToTracker()">💾 Save</button>
+      <button class="ghost-btn" onclick="goHome()">🏟️ New</button>
+    </div>
+    <a href="${sbLink}" target="_blank" class="sportsbet-btn bb">🏆 OPEN SPORTSBET FOR THIS MATCH</a>
+    <div class="disclaimer">For entertainment only · Not financial advice<br>Please gamble responsibly · 1800 858 858</div>
+  </div>`;
+}
+
+function legCardHTML(leg,rank,oddsMap={}){
+  const isLine=leg.stat==='line';
+  const medals=['🥇','🥈','🥉'];
+  const borderCol=rank===0?'var(--gold)':rank===1?'#555':rank===2?'#7a5c2e':'var(--border)';
+  const badgeBg=isLine?'var(--blue-dim)':'rgba(240,165,0,0.1)';
+  const badgeBorder=isLine?'rgba(41,121,255,0.3)':'rgba(240,165,0,0.3)';
+  const lineCol=isLine?'#82b1ff':'var(--gold)';
+  const conf=leg.confidence||60;
+  const confCol=conf>=72?'var(--green)':conf>=55?'var(--gold)':'var(--red)';
+  const medal=rank<3?`<div class="leg-medal">${medals[rank]}</div>`:'';
+
+  // Value finder
+  let valueBadge='';
+  if(leg.odds&&leg.confidence){
+    const edge=leg.confidence-Math.round((1/parseFloat(leg.odds))*100);
+    if(edge>8) valueBadge=`<span class="value-badge value-good">+${edge}% EDGE</span>`;
+    else if(edge<-8) valueBadge=`<span class="value-badge value-poor">${edge}%</span>`;
+  }
+
+  // Odds comparison across bookmakers
+  const oddsKey=`${leg.player}|${leg.stat}|${leg.line}`;
+  const bookOdds=oddsMap[oddsKey]||[];
+  let oddsCompareHTML='';
+  if(bookOdds.length>1){
+    const maxOdds=Math.max(...bookOdds.map(b=>b.odds));
+    const sorted=[...bookOdds].sort((a,b)=>b.odds-a.odds);
+    const books=sorted.map(b=>`
+      <div class="odds-book ${b.odds===maxOdds?'best':''}">
+        ${b.odds===maxOdds?'<div class="odds-best-tag">BEST</div>':''}
+        <div class="odds-book-name">${b.bookmaker.replace('Sportsbet','SB').replace('Ladbrokes','Lads').replace('Pointsbet','PB')}</div>
+        <div class="odds-book-val">$${b.odds.toFixed(2)}</div>
+      </div>`).join('');
+    oddsCompareHTML=`<div class="odds-compare">
+      <div class="odds-compare-label">Odds comparison</div>
+      <div class="odds-books">${books}</div>
+    </div>`;
+  }
+
+  // Form sparkline
+  const ps=playerStats.find(p=>p.name&&leg.player&&p.name.toLowerCase().includes(leg.player.toLowerCase().split(' ').pop()));
+  let formChart='';
+  if(ps?.season2026?.recentDisposals?.length>0){
+    const recent=ps.season2026.recentDisposals;
+    const max=Math.max(...recent,1);
+    const bars=recent.map(v=>{
+      const h=Math.max(2,Math.round((v/max)*20));
+      return `<div class="form-bar" style="height:${h}px;background:${v>=leg.line?'var(--green)':'var(--red)'}"></div>`;
+    }).join('');
+    formChart=`<div style="margin-top:6px">
+      <div style="font-size:9px;color:var(--dim);margin-bottom:3px;letter-spacing:1px">RECENT FORM</div>
+      <div class="form-chart">${bars}</div>
+    </div>`;
+  }
+
+  const statsLine=ps?.season2026?`<div style="font-size:10px;color:var(--muted);margin-top:5px;">
+    📊 ${ps.season2026.avgDisposals?`${ps.season2026.avgDisposals} avg`:''}${ps.season2026.avgGoals!=null?` · ${ps.season2026.avgGoals}g/gm`:''}${ps.season2026.last5Avg?` · L5: ${ps.season2026.last5Avg}`:''}
+  </div>`:'';
+  const rationale=leg.rationale?`<div class="leg-rationale">${leg.rationale}</div>`:'';
+  const h2h=leg.h2h?`<div class="leg-h2h">H2H: ${leg.h2h}</div>`:'';
+  const oddsSpan=leg.odds?`<span class="leg-odds-val" style="color:${lineCol}"> @ $${leg.odds}</span>`:'';
+  const bmSpan=leg.bookmaker&&bookOdds.length<=1?`<span style="color:var(--dim);margin-left:4px">· ${leg.bookmaker}</span>`:'';
+
+  return `<div class="leg-card" style="border-color:${borderCol};border-left:3px solid ${borderCol}">
+    ${medal}
+    <div class="leg-inner">
+      <div class="leg-badge" style="background:${badgeBg};border:1px solid ${badgeBorder}">
+        <div class="leg-stat-icon">${STAT_EMOJI[leg.stat]||'📊'}</div>
+        <div class="leg-line" style="color:${lineCol}">${isLine?'LINE':leg.line+'+'}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="leg-player">${leg.player}${valueBadge}</div>
+        <div class="leg-meta">${leg.team}${oddsSpan}${bmSpan}</div>
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-bg"><div class="conf-bar-fill" style="width:${conf}%;background:${confCol}"></div></div>
+          <span class="conf-pct" style="color:${confCol}">${conf}%</span>
+        </div>
+        ${statsLine}${formChart}
+        ${oddsCompareHTML}
+        ${rationale}${h2h}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── ANALYSIS ──────────────────────────────────────────
+async function callClaude(prompt,maxTokens=1000){
+  const res=await fetch(`${PROXY}/analyse`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})
+  });
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+  return (data.content||[]).map(b=>b.text||'').join('');
+}
+
+async function fetchInsights(){
+  try{
+    const settled=tracker.filter(t=>t.legs.some(l=>l.result!=='pending'));
+    if(settled.length===0) return;
+    const res=await fetch(`${PROXY}/insights`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trackerData:tracker})});
+    const data=await res.json();
+    if(data.rules&&data.rules.length>0) insights=data;
+  }catch(e){}
+}
+
+function buildPrompt(){
+  const home=selectedGame.home_team,away=selectedGame.away_team;
+  const filteredMarkets=markets.filter(m=>selectedStats.includes(m.stat));
+  const hasMarkets=filteredMarkets.length>0;
+  const teamFilter=focusTeam==='both'?'both teams':focusTeam==='home'?`${home} players only`:`${away} players only`;
+  const riskDesc=riskLevel==='safe'?'Safe only — avoid anything under 70% confidence.':riskLevel==='aggressive'?'Include higher-value legs with bigger odds.':'Balanced — mix of safe and value legs.';
+  const marketList=hasMarkets?filteredMarkets.map(m=>`${m.player} | ${m.stat} | ${m.line}+ | $${m.odds} | ${m.bookmaker}`).join('\n'):'';
+  const lineBetInstruction=lineBet==='none'?'Do not include a match line bet.':lineBet==='ai'?`Decide if a match line bet adds value. If confident, include it as one of the ${numLegs} legs.`:lineBet==='home'?`Include a match line leg backing ${home}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`:`Include a match line leg backing ${away}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`;
+  const statsLines=playerStats.map(p=>{
+    const s=p.season2026||{};const parts=[p.name];
+    if(s.avgDisposals) parts.push(`avg ${s.avgDisposals} disp`);
+    if(s.avgGoals!=null) parts.push(`${s.avgGoals} goals/gm`);
+    if(s.last5Avg) parts.push(`L5: ${s.last5Avg}`);
+    if(s.recentDisposals) parts.push(`recent: ${s.recentDisposals.join(',')}`);
+    if(s.hitRates?.['20plus']) parts.push(`20+ hits ${s.hitRates['20plus'].season}%`);
+    if(s.hitRates?.['25plus']) parts.push(`25+ hits ${s.hitRates['25plus'].season}%`);
+    return parts.join(' | ');
+  });
+  const statsSection=statsLines.length>0?`\nLIVE 2026 STATS (ground truth):\n${statsLines.join('\n')}\n`:'';
+  const venueSection=venue?`\nVENUE: ${venue.name} (${venue.length}×${venue.width}m, ${venue.size})\n- Disposal mod: ${venue.disposalMod>0?'+':''}${venue.disposalMod} · Goals mod: ${venue.goalsMod>0?'+':''}${venue.goalsMod} · Tackle mod: ${venue.tackleMod>0?'+':''}${venue.tackleMod}\n- ${venue.notes.join(' · ')}\n`:'';
+  const alerts=getWeatherAlerts();
+  const weatherSection=weather?`\nWEATHER: ${weather.temp}°C, wind ${weather.wind}km/h, rain ${weather.rainMm>0?weather.rainMm+'mm':'none'}\n${alerts.map(a=>a.msg).join('\n')}\n${weather.wind>40?'DO NOT suggest any goals legs — extreme wind.':''}\n`:'';
+  const insightsSection=insights?.rules?.length>0?`\nPERSONAL INTELLIGENCE (from your tracker — apply these):\n${insights.rules.join('\n')}\n`:'';
+
+  return `You are an expert AFL statistician and betting analyst. Build the best ${numLegs}-leg multi for: ${home} vs ${away}.
+${context?`Context: ${context}`:''}
+Team focus: ${teamFilter} · Risk: ${riskDesc} · Line bet: ${lineBetInstruction}
+${venueSection}${weatherSection}${statsSection}${insightsSection}
+${hasMarkets?`Live markets (confirmed named players only):\n${marketList}`:`No live markets — use 2026 AFL knowledge.`}
+
+RULES:
+- ${hasMarkets?'ONLY suggest players from live markets above':'Only suggest likely named players based on 2026 form'}
+- Never contradict live 2026 stats
+- Venue and weather modifiers MUST influence your selections
+- Goals: max 2, use 2+ not 3+, in-form forwards only, never if avg <0.5/game
+- Tackles: midfielders only, never Harley Reid
+- Anchor with 2-3 disposal legs
+- Exactly ${numLegs} legs total · Flag weakest leg
+
+Respond ONLY with valid JSON, no markdown:
+{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences with stats/venue/weather>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}`;
+}
+
+async function runAnalysis(){
+  const btn=document.getElementById('buildBtn');
+  const errEl=document.getElementById('aiError');
+  btn.disabled=true;
+  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> LOADING YOUR LEARNINGS...</div>`;
+  errEl.style.display='none';
+  await fetchInsights();
+  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> BUILDING YOUR ${numLegs}-LEG MULTI...</div>`;
+  try{
+    const text=await callClaude(buildPrompt(),1500);
+    result=JSON.parse(text.replace(/```json|```/g,'').trim());
+    screen='results';resultTab='recommended';render();
+  }catch(e){
+    errEl.style.display='block';
+    errEl.textContent='⚠️ Analysis failed — try again.';
+    btn.disabled=false;
+    btn.innerHTML=`⚡ BUILD MY ${numLegs}-LEG MULTI`;
+  }
+}
+
+// ── TRACKER ───────────────────────────────────────────
+function saveToTracker(){
+  if(!result||!selectedGame) return;
+  tracker.unshift({
+    id:Date.now(),match:`${selectedGame.home_team} vs ${selectedGame.away_team}`,
+    venue:venue?.name||'',date:selectedGame.commence_time,
+    legs:result.recommendedLegs.map(l=>({player:l.player,stat:l.stat,line:l.line,odds:l.odds,result:'pending'})),
+    estimatedOdds:result.estimatedOdds,combinedRating:result.combinedRating,placed:false,
+  });
+  saveTracker();
+  alert('✅ Saved to Tracker!');
+}
+
+function renderTracker(){
+  document.getElementById('main').innerHTML=buildTrackerHTML();
+}
+
+function buildTrackerHTML(){
+  if(tracker.length===0) return `<div class="fu"><div class="section-title bb">Results Tracker</div>
+    <div class="empty"><div class="empty-icon">📋</div>
+      <div class="empty-title">No multis saved yet</div>
+      <div class="empty-sub">Build a multi and tap Save to start tracking results.</div>
+    </div></div>`;
+
+  const total=tracker.length;
+  const settled=tracker.filter(t=>t.legs.every(l=>l.result!=='pending'));
+  const won=settled.filter(t=>t.legs.every(l=>l.result==='hit'));
+  const totalLegs=tracker.reduce((a,t)=>a+t.legs.length,0);
+  const hitLegs=tracker.reduce((a,t)=>a+t.legs.filter(l=>l.result==='hit').length,0);
+
+  const cards=tracker.map((t,ti)=>{
+    const allDone=t.legs.every(l=>l.result!=='pending');
+    const allHit=t.legs.every(l=>l.result==='hit');
+    const hitCount=t.legs.filter(l=>l.result==='hit').length;
+    const pills=t.legs.map((l,li)=>`<span class="tracker-leg ${l.result}" onclick="toggleLegResult(${ti},${li})">${l.player.split(' ').pop()} ${l.line}+ ${l.stat==='line'?'LINE':l.stat.slice(0,3).toUpperCase()} ${l.result==='hit'?'✅':l.result==='miss'?'❌':'⬜'}</span>`).join('');
+    const resultLine=allDone?`<div class="tracker-result ${allHit?'win':'loss'}">${allHit?'🏆 WINNER!':'❌ '+hitCount+'/'+t.legs.length+' legs hit'}</div>`:`<div style="font-size:11px;color:var(--dim);margin-top:6px">Tap legs to mark results</div>`;
+    return `<div class="tracker-card">
+      <div class="tracker-match bb">${t.match}</div>
+      <div class="tracker-date">${fmt(t.date)}${t.venue?' · '+t.venue:''} · ${t.combinedRating||''} · ${t.estimatedOdds||''}</div>
+      <div class="tracker-legs">${pills}</div>
+      <div style="font-size:12px;color:var(--muted)">${hitCount}/${t.legs.length} legs hit</div>
+      ${resultLine}
+      <button onclick="deleteTrackerEntry(${ti})" style="background:none;border:none;color:var(--dim);font-size:11px;cursor:pointer;margin-top:8px">🗑️ Delete</button>
+    </div>`;
+  }).join('');
+
+  return `<div class="fu">
+    <div class="section-title bb">Results Tracker</div>
+    <div class="summary-bar">
+      <div class="summary-chip"><div class="summary-chip-label">Multis</div><div class="summary-chip-val">${total}</div></div>
+      <div class="summary-chip"><div class="summary-chip-label">Winners</div><div class="summary-chip-val" style="color:var(--green)">${won.length}</div></div>
+      <div class="summary-chip"><div class="summary-chip-label">Strike</div><div class="summary-chip-val">${settled.length>0?Math.round(won.length/settled.length*100)+'%':'—'}</div></div>
+      <div class="summary-chip"><div class="summary-chip-label">Legs hit</div><div class="summary-chip-val">${totalLegs>0?Math.round(hitLegs/totalLegs*100)+'%':'—'}</div></div>
+    </div>
+    ${cards}
+  </div>`;
+}
+
+function toggleLegResult(ti,li){
+  const leg=tracker[ti].legs[li];
+  leg.result=leg.result==='pending'?'hit':leg.result==='hit'?'miss':'pending';
+  saveTracker();renderTracker();
+}
+function deleteTrackerEntry(idx){tracker.splice(idx,1);saveTracker();renderTracker();}
+
+// ── INSIGHTS ──────────────────────────────────────────
+function renderInsightsTab(){
+  document.getElementById('main').innerHTML=buildInsightsHTML();
+  fetchInsights().then(()=>{
+    if(insights) document.getElementById('main').innerHTML=buildInsightsHTML();
+  });
+}
+
+function buildInsightsHTML(){
+  const settled=tracker.filter(t=>t.legs.some(l=>l.result!=='pending'));
+  if(settled.length===0) return `<div class="fu"><div class="section-title bb">Learning Engine</div>
+    <div class="empty"><div class="empty-icon">🧠</div>
+      <div class="empty-title">Not enough data yet</div>
+      <div class="empty-sub">Mark results in your tracker.<br>Need at least 5 settled legs to generate insights.</div>
+    </div></div>`;
+  if(!insights) return `<div class="fu"><div class="section-title bb">Learning Engine</div><div class="status-row"><div class="spinner-sm"></div> Analysing your results...</div></div>`;
+
+  const{summary,statRates,playerRates,lineAnalysis,venueRates,rules}=insights;
+  const statCards=statRates.map(s=>{
+    const col=s.hitRate>=60?'var(--green)':s.hitRate>=45?'var(--gold)':'var(--red)';
+    return `<div class="summary-chip"><div class="summary-chip-label">${s.stat}</div><div class="summary-chip-val" style="color:${col}">${s.hitRate}%</div><div style="font-size:9px;color:var(--dim)">${s.total} legs</div></div>`;
+  }).join('');
+  const lineCards=Object.values(lineAnalysis).filter(l=>l.total>0).map(l=>{
+    const col=l.hitRate>=60?'var(--green)':l.hitRate>=45?'var(--gold)':'var(--red)';
+    return `<div class="summary-chip"><div class="summary-chip-label">${l.range}</div><div class="summary-chip-val" style="color:${col}">${l.hitRate!==null?l.hitRate+'%':'—'}</div><div style="font-size:9px;color:var(--dim)">${l.total} legs</div></div>`;
+  }).join('');
+  const playerRows=playerRates.length===0?`<div style="font-size:12px;color:var(--dim)">Need more data</div>`:playerRates.map(p=>{
+    const col=p.hitRate>=70?'var(--green)':p.hitRate>=50?'var(--gold)':'var(--red)';
+    const emoji=p.hitRate>=70?'🔥':p.hitRate>=50?'👍':'⚠️';
+    return `<div class="player-row"><div><div style="font-size:13px;font-weight:600;color:#fff">${emoji} ${p.player}</div><div style="font-size:10px;color:var(--dim)">${p.total} legs · avg line ${p.avgLine}+</div></div><div class="bb" style="font-size:22px;color:${col}">${p.hitRate}%</div></div>`;
+  }).join('');
+  const rulesHTML=rules.length===0?`<div style="font-size:12px;color:var(--dim)">Not enough data yet</div>`:rules.map(r=>`<div class="rule-item">${r}</div>`).join('');
+
+  return `<div class="fu">
+    <div class="section-title bb">Learning Engine</div>
+    <div class="section-sub">${summary.totalLegs} settled legs · ${summary.settledMultis} multis · ${summary.overallHitRate}% hit rate</div>
+
+    <div class="insights-card">
+      <div class="sl" style="margin-bottom:10px">Hit rate by stat type</div>
+      <div class="summary-bar" style="flex-wrap:wrap;gap:6px">${statCards}</div>
+    </div>
+
+    <div class="insights-card">
+      <div class="sl" style="margin-bottom:10px">Disposal line analysis</div>
+      <div class="summary-bar">${lineCards}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:6px">Lower lines hit more consistently</div>
+    </div>
+
+    ${playerRates.length>0?`<div class="insights-card"><div class="sl" style="margin-bottom:8px">Your player hit rates</div>${playerRows}</div>`:''}
+
+    ${venueRates.length>0?`<div class="insights-card"><div class="sl" style="margin-bottom:8px">Venue performance</div>${venueRates.map(v=>{const col=v.hitRate>=60?'var(--green)':v.hitRate>=45?'var(--gold)':'var(--red)';return`<div class="player-row"><div style="font-size:13px;color:var(--text)">${v.venue}</div><div class="bb" style="font-size:20px;color:${col}">${v.hitRate}%<span style="font-size:11px;color:var(--dim);font-family:var(--font-body);font-weight:400"> (${v.total})</span></div></div>`;}).join('')}</div>`:''}
+
+    <div style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:14px;padding:14px;">
+      <div class="sl" style="margin-bottom:10px;color:var(--gold)">🤖 Rules auto-injected into every build</div>
+      ${rulesHTML}
+      <div style="font-size:10px;color:var(--dim);margin-top:8px;letter-spacing:0.5px">These rules update automatically as you mark more results</div>
+    </div>
+  </div>`;
+}
+
+// ── SCANNER ───────────────────────────────────────────
+function renderScanner(){
+  document.getElementById('main').innerHTML=`<div class="fu">
+    <div class="section-title bb">Bet Slip Scanner</div>
+    <div class="section-sub">Photo your Sportsbet slip to auto-save to tracker</div>
+    <div class="scan-area" onclick="document.getElementById('slipInput').click()">
+      <div style="font-size:48px;margin-bottom:10px;opacity:0.6">📸</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text)">Tap to take photo or upload</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">Works best with good lighting</div>
+      <input type="file" id="slipInput" accept="image/*" style="display:none" onchange="scanSlip(this)">
+    </div>
+    <div id="scanResult"></div>
+    <div class="info-box">Claude reads your slip and saves all legs to the tracker automatically. Then tap each leg after the game to mark hit or miss.</div>
+  </div>`;
+}
+
+async function scanSlip(input){
+  const file=input.files[0];
+  if(!file) return;
+  const scanEl=document.getElementById('scanResult');
+  scanEl.innerHTML=`<div class="status-row"><div class="spinner-sm"></div> Reading your bet slip...</div>`;
+  try{
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    const response=await fetch(`${PROXY}/analyse`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:file.type,data:base64}},{type:'text',text:'Read this AFL Sportsbet bet slip. Respond ONLY with valid JSON: {"match":"<Home vs Away>","legs":[{"player":"<n>","stat":"<disposals/goals/tackles/marks/line>","line":<n>,"odds":<n>}],"totalOdds":<n or null>,"stake":<n or null>}'}]}]})});
+    const data=await response.json();
+    const text=(data.content||[]).map(b=>b.text||'').join('');
+    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+    tracker.unshift({id:Date.now(),match:parsed.match||'Scanned slip',venue:'',date:new Date().toISOString(),legs:(parsed.legs||[]).map(l=>({...l,result:'pending'})),estimatedOdds:parsed.totalOdds?`$${parsed.totalOdds}`:'',combinedRating:'',placed:true});
+    saveTracker();
+    scanEl.innerHTML=`<div class="success-box">✅ Bet slip saved — ${parsed.legs?.length||0} legs detected<br><br><button onclick="switchTab('tracker')" style="background:var(--green);color:#0a0f1a;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;">View in Tracker →</button></div>`;
+  }catch(e){scanEl.innerHTML=`<div class="error-box">⚠️ Couldn't read slip — try a clearer photo with good lighting.</div>`;}
+}
+
+// ── HELPERS ───────────────────────────────────────────
+function setNumLegs(n){numLegs=n;redrawSetup();}
+function toggleStat(id){selectedStats=selectedStats.includes(id)?selectedStats.filter(s=>s!==id):[...selectedStats,id];redrawSetup();}
+function setFocusTeam(v){focusTeam=v;redrawSetup();}
+function setRiskLevel(v){riskLevel=v;redrawSetup();}
+function setLineBet(v){lineBet=v;redrawSetup();}
+function redrawSetup(){
+  document.getElementById('main').innerHTML=renderSetup();
+  document.getElementById('marketsLoading').style.display='none';
+  document.getElementById('statsStatus').style.display='none';
+  if(markets.length>0) renderMarketsBadge();
+  if(playerStats.length>0) renderStatsBadge();
+}
+function setTab(t){
+  resultTab=t;
+  document.querySelectorAll('.result-tab').forEach(el=>el.classList.toggle('active',t==='recommended'?el.textContent.includes('Multi'):el.textContent.includes('Alt')));
+  const oddsMap=buildOddsMap();
+  const rec=(result.recommendedLegs||[]).map((leg,i)=>legCardHTML(leg,i,oddsMap)).join('');
+  const alt=(result.alternativeLegs||[]).length?(result.alternativeLegs||[]).map(leg=>legCardHTML(leg,99,oddsMap)).join(''):`<div class="empty" style="padding:24px"><div style="color:var(--dim);font-size:13px">No alternatives suggested</div></div>`;
+  document.getElementById('legsList').innerHTML=t==='recommended'?rec:alt;
+}
+function goHome(){screen='home';selectedGame=null;markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;venue=null;render();if(!gamesLoaded)fetchGames();}
+function goSetup(){screen='setup';render();document.getElementById('marketsLoading').style.display='none';document.getElementById('statsStatus').style.display='none';if(markets.length>0)renderMarketsBadge();if(playerStats.length>0)renderStatsBadge();}
+
+// PWA service worker
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+render();
+if(!gamesLoaded) fetchGames();
+</script>
+</body>
+</html>
