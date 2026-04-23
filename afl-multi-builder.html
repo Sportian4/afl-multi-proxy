@@ -13,24 +13,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:       #0a0f1a;
-  --bg2:      #111827;
-  --bg3:      #1a2235;
-  --bg4:      #222d42;
-  --border:   #2a3a55;
-  --border2:  #1e2d45;
-  --gold:     #f0a500;
-  --gold-dim: rgba(240,165,0,0.12);
-  --green:    #00e676;
-  --green-dim:rgba(0,230,118,0.1);
-  --red:      #ff4444;
-  --red-dim:  rgba(255,68,68,0.1);
-  --blue:     #2979ff;
-  --blue-dim: rgba(41,121,255,0.12);
-  --text:     #e8edf5;
-  --muted:    #8899bb;
-  --dim:      #4a5e80;
-  --dimmer:   #2a3a55;
+  --bg:       #13151a;
+  --bg2:      #1c1f27;
+  --bg3:      #242830;
+  --bg4:      #2d3240;
+  --border:   #2e3340;
+  --border2:  #252a36;
+  --gold:     #e8a020;
+  --gold-dim: rgba(232,160,32,0.1);
+  --green:    #2ecc8a;
+  --green-dim:rgba(46,204,138,0.1);
+  --red:      #e05555;
+  --red-dim:  rgba(224,85,85,0.1);
+  --blue:     #4a90d9;
+  --blue-dim: rgba(74,144,217,0.1);
+  --text:     #dde3ee;
+  --muted:    #7a8aa8;
+  --dim:      #4a5570;
+  --dimmer:   #2a3048;
   --font-display: 'Bebas Neue', sans-serif;
   --font-body:    'DM Sans', sans-serif;
 }
@@ -43,13 +43,6 @@ body{
   min-height:100vh;
   position:relative;
 }
-/* Subtle grain overlay */
-body::before{
-  content:'';
-  position:fixed;inset:0;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events:none;z-index:0;opacity:0.4;
-}
 #header,#main{position:relative;z-index:1;}
 
 /* FONTS */
@@ -57,11 +50,10 @@ body::before{
 
 /* HEADER */
 #header{
-  background:linear-gradient(180deg,#0d1526 0%,#0a0f1a 100%);
+  background:var(--bg2);
   border-bottom:1px solid var(--border);
   padding:12px 16px 0;
   position:sticky;top:0;z-index:100;
-  box-shadow:0 4px 24px rgba(0,0,0,0.4);
 }
 .header-top{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px;margin-bottom:12px;}
 .logo-wrap{display:flex;align-items:center;gap:10px;flex:1;}
@@ -70,7 +62,7 @@ body::before{
   background:linear-gradient(135deg,#f0a500,#c07800);
   display:flex;align-items:center;justify-content:center;
   font-size:20px;flex-shrink:0;
-  box-shadow:0 0 16px rgba(240,165,0,0.3);
+  box-shadow:0 2px 8px rgba(0,0,0,0.3);
 }
 .logo-text{}
 .logo-title{font-family:var(--font-display);font-size:22px;color:#fff;letter-spacing:1px;line-height:1;}
@@ -112,7 +104,7 @@ body::before{
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.3s ease forwards;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+@keyframes pulse{0%,100%{opacity:0.9;}50%{opacity:0.4;}}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 1.5s ease infinite;margin-right:4px;}
 
 /* GAME CARDS */
@@ -131,7 +123,7 @@ body::before{
   content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
   background:var(--border);transition:background 0.2s;
 }
-.game-card:hover{border-color:var(--gold);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.game-card:hover{border-color:var(--gold);box-shadow:0 4px 16px rgba(0,0,0,0.2);}
 .game-card:hover::before{background:var(--gold);}
 .game-card.has-odds::before{background:var(--green);}
 .game-time{font-size:10px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
@@ -170,7 +162,7 @@ body::before{
 
 /* MATCH HEADER CARD */
 .match-header{
-  background:linear-gradient(135deg,var(--bg2),var(--bg3));
+  background:var(--bg2);
   border:1px solid var(--border);border-radius:14px;
   padding:16px;margin-bottom:16px;
 }
@@ -248,7 +240,7 @@ textarea{resize:vertical;padding:10px 13px;}
   border:none;border-radius:12px;color:#0a0f1a;
   font-family:var(--font-display);font-size:20px;letter-spacing:2px;
   transition:all 0.2s;
-  box-shadow:0 4px 20px rgba(240,165,0,0.25);
+  box-shadow:0 2px 12px rgba(0,0,0,0.3);
 }
 .build-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(240,165,0,0.35);}
 .build-btn:disabled{background:var(--bg3);color:var(--dim);cursor:not-allowed;box-shadow:none;}
@@ -256,7 +248,7 @@ textarea{resize:vertical;padding:10px 13px;}
 
 /* RESULTS */
 .result-header{
-  background:linear-gradient(135deg,var(--bg2),var(--bg3));
+  background:var(--bg2);
   border:1px solid var(--border);border-radius:14px;
   padding:16px;margin-bottom:16px;
 }
@@ -326,16 +318,15 @@ textarea{resize:vertical;padding:10px 13px;}
 
 /* SPORTSBET BUTTON */
 .sportsbet-btn{
-  width:100%;padding:14px;
-  background:linear-gradient(135deg,#1a3a6b,#0f2550);
-  border:1px solid rgba(41,121,255,0.3);
-  border-radius:12px;color:#fff;
-  font-family:var(--font-display);font-size:18px;letter-spacing:1.5px;
+  width:100%;padding:13px;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:12px;color:var(--muted);
+  font-family:var(--font-display);font-size:17px;letter-spacing:1.5px;
   margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;
   text-decoration:none;transition:all 0.2s;
-  box-shadow:0 4px 16px rgba(0,0,0,0.3);
 }
-.sportsbet-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,0.4);}
+.sportsbet-btn:hover{border-color:var(--gold);color:var(--gold);}
 
 /* BOTTOM BTNS */
 .bottom-btns{display:flex;gap:8px;margin-top:20px;}
@@ -412,7 +403,7 @@ textarea{resize:vertical;padding:10px 13px;}
       <div class="logo-icon">🏉</div>
       <div class="logo-text">
         <div class="logo-title">AFL MULTI</div>
-        <div class="logo-sub">Live Odds · AI · 2026</div>
+        <div class="logo-sub">AFL · Same Game Multis</div>
       </div>
     </div>
     <div class="api-pill" id="apiBadge" style="display:none">
@@ -946,7 +937,20 @@ function buildPrompt(){
   const hasMarkets=filteredMarkets.length>0;
   const teamFilter=focusTeam==='both'?'both teams':focusTeam==='home'?`${home} players only`:`${away} players only`;
   const riskDesc=riskLevel==='safe'?'Safe only — avoid anything under 70% confidence.':riskLevel==='aggressive'?'Include higher-value legs with bigger odds.':'Balanced — mix of safe and value legs.';
+  
+  // Separate markets by stat type for clearer prompt injection
+  const goalsMarkets=filteredMarkets.filter(m=>m.stat==='goals');
+  const disposalMarkets=filteredMarkets.filter(m=>m.stat==='disposals');
+  const tackleMarkets=filteredMarkets.filter(m=>m.stat==='tackles');
+  const otherMarkets=filteredMarkets.filter(m=>!['goals','disposals','tackles'].includes(m.stat));
+  
+  const hasGoalsSelected=selectedStats.includes('goals');
+  const hasGoalsMarkets=goalsMarkets.length>0;
+  
   const marketList=hasMarkets?filteredMarkets.map(m=>`${m.player} | ${m.stat} | ${m.line}+ | $${m.odds} | ${m.bookmaker}`).join('\n'):'';
+  // Stats selected but NOT in live markets — Claude must use AI knowledge for these
+  const statsWithoutMarkets=selectedStats.filter(s=>!filteredMarkets.some(m=>m.stat===s));
+  const statsWithMarkets=selectedStats.filter(s=>filteredMarkets.some(m=>m.stat===s));
   const lineBetInstruction=lineBet==='none'?'Do not include a match line bet.':lineBet==='ai'?`Decide if a match line bet adds value. If confident, include it as one of the ${numLegs} legs.`:lineBet==='home'?`Include a match line leg backing ${home}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`:`Include a match line leg backing ${away}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`;
   const statsLines=playerStats.map(p=>{
     const s=p.season2026||{};const parts=[p.name];
@@ -968,16 +972,32 @@ function buildPrompt(){
 ${context?`Context: ${context}`:''}
 Team focus: ${teamFilter} · Risk: ${riskDesc} · Line bet: ${lineBetInstruction}
 ${venueSection}${weatherSection}${statsSection}${insightsSection}
-${hasMarkets?`Live markets (confirmed named players only):\n${marketList}`:`No live markets — use 2026 AFL knowledge.`}
+${hasMarkets
+  ? `LIVE MARKETS available for: ${statsWithMarkets.join(', ')}\n${marketList}\n\n${statsWithoutMarkets.length>0 ? `NO LIVE MARKETS for: ${statsWithoutMarkets.join(', ')} — use your AFL knowledge for these stat types. These legs are still REQUIRED.` : ''}`
+  : `No live markets — use your 2026 AFL knowledge for all legs.`}
 
 RULES:
 - ${hasMarkets?'ONLY suggest players from live markets above':'Only suggest likely named players based on 2026 form'}
 - Never contradict live 2026 stats
 - Venue and weather modifiers MUST influence your selections
-- Goals: max 2, use 2+ not 3+, in-form forwards only, never if avg <0.5/game
-- Tackles: midfielders only, never Harley Reid
-- Anchor with 2-3 disposal legs
-- Exactly ${numLegs} legs total · Flag weakest leg
+STAT TYPE RULES — only use stat types the user has selected below. Never substitute with a different stat type.
+Selected stat types: ${selectedStats.join(', ')}
+
+${selectedStats.includes('disposals') ? '- DISPOSALS: Include 2-3 disposal legs as the anchor of the multi — most reliable stat type.' : '- Do NOT include any disposal legs — user has not selected disposals.'}
+IMPORTANT: Live markets may only cover disposals and tackles. For all other selected stat types, use your AFL knowledge to suggest the best legs — AI-only legs are perfectly valid and required when the user has selected that stat type.
+
+${selectedStats.includes('disposals') ? '- DISPOSALS: Include 2-3 disposal legs using players from live markets.' : '- Do NOT include disposal legs.'}
+${selectedStats.includes('goals') ? ('- GOALS REQUIRED: Must include 1-2 goals legs. ' + (hasGoalsMarkets ? 'Use goals players from live markets above.' : 'No goals markets available — use your AFL knowledge. Pick in-form forwards for this match averaging 0.5+ goals/game. Use 2+ goals line, not 3+.')) : '- Do NOT include goals legs.'}
+${selectedStats.includes('tackles') ? '- TACKLES REQUIRED: Must include 1 tackle leg. Midfielders only, never Harley Reid.' : '- Do NOT include tackle legs.'}
+${selectedStats.includes('marks') ? '- MARKS REQUIRED: Must include 1 marks leg. Use your knowledge of marking forwards/defenders — suggest a realistic line like 3+ or 4+ marks.' : '- Do NOT include marks legs.'}
+${selectedStats.includes('clearances') ? '- CLEARANCES REQUIRED: Must include 1 clearances leg for a dominant midfielder. Suggest a realistic line like 6+ or 7+ clearances.' : '- Do NOT include clearance legs.'}
+${selectedStats.includes('kicks') ? '- KICKS REQUIRED: Must include 1 kicks leg. Suggest a realistic line based on the player average.' : '- Do NOT include kicks legs.'}
+${selectedStats.includes('handballs') ? '- HANDBALLS REQUIRED: Must include 1 handballs leg for an inside midfielder.' : '- Do NOT include handball legs.'}
+${selectedStats.includes('hitouts') ? '- HIT-OUTS REQUIRED: Must include 1 hit-outs leg for the dominant ruckman. Suggest a realistic line like 25+ or 30+.' : '- Do NOT include hit-out legs.'}
+
+- Exactly ${numLegs} legs total — you MUST spread legs across all selected stat types, not just disposals
+- For AI-only legs with no live odds, set odds to null and bookmaker to null
+- Flag weakest leg
 
 Respond ONLY with valid JSON, no markdown:
 {"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences with stats/venue/weather>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}`;
