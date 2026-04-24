@@ -590,7 +590,7 @@ async function checkAllMarkets(){
 
 function selectGame(id){
   selectedGame=games.find(g=>g.id===id);
-  markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;manualLegs=[];showManualOdds=false;
+  markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;namedTeams='';
   venue=getVenue(selectedGame.home_team);
   screen='setup';render();
   fetchMarkets();
@@ -956,18 +956,41 @@ function buildPrompt(){
   const weatherSection=weather?'\nWEATHER: '+weather.temp+'C, wind '+weather.wind+'km/h, rain '+(weather.rainMm>0?weather.rainMm+'mm':'none')+'\n'+alerts.map(a=>a.msg).join('\n')+(weather.wind>40?'\nDO NOT suggest any goals legs.':'')+'\n':'';
   const insightsSection=insights&&insights.rules&&insights.rules.length>0?'\nPERSONAL INTELLIGENCE:\n'+insights.rules.join('\n')+'\n':'';
 
+  // Only use stats that have live market data when markets are available
+  const availableStats=markets.length>0?selectedStats.filter(s=>filteredMarkets.some(m=>m.stat===s)):selectedStats;
+  const aiOnlyStats=selectedStats.filter(s=>!availableStats.includes(s));
   // Build stat type instructions
-  const statInstructions=[];
-  if(selectedStats.includes('disposals')) statInstructions.push('- DISPOSALS: 2 legs. Use live market players if available.');
-  if(selectedStats.includes('goals')) statInstructions.push('- GOALS: 1-2 legs. In-form forwards, 2+ goals line (not 3+), avg 0.5+ goals/game. Use AI knowledge if no live odds.');
-  if(selectedStats.includes('tackles')) statInstructions.push('- TACKLES: 1 leg. Midfielders only, never Harley Reid. Use AI knowledge if no live odds.');
-  if(selectedStats.includes('marks')) statInstructions.push('- MARKS: 1 leg. Key forward or defender, 3+ or 4+ line. Use AI knowledge.');
-  if(selectedStats.includes('clearances')) statInstructions.push('- CLEARANCES: 1 leg. Inside midfielder, 6+ or 7+ line. Use AI knowledge.');
-  if(selectedStats.includes('kicks')) statInstructions.push('- KICKS: 1 leg. Outside midfielder or defender. Use AI knowledge.');
-  if(selectedStats.includes('handballs')) statInstructions.push('- HANDBALLS: 1 leg. Inside midfielder. Use AI knowledge.');
-  if(selectedStats.includes('hitouts')) statInstructions.push('- HIT-OUTS: 1 leg. Dominant ruckman, 25+ or 30+ line. Use AI knowledge.');
+  // Get confirmed player names from live markets to use across all stat types
+  const confirmedPlayers=[...new Set(filteredMarkets.map(m=>m.player))];
+  const confirmedNote=confirmedPlayers.length>0
+    ? 'CONFIRMED PLAYING (from live odds markets): '+confirmedPlayers.join(', ')
+    : '';
 
-  return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+(context?'Context: '+context:'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
+  const statInstructions=[];
+  if(selectedStats.includes('disposals')&&availableStats.includes('disposals'))
+    statInstructions.push('- DISPOSALS: 2-3 legs. Use players from live markets above.');
+  if(selectedStats.includes('goals'))
+    statInstructions.push('- GOALS: 1-2 legs. Use 2+ line not 3+. Pick forwards from the confirmed players list above who average 0.5+ goals/game. No live odds — set odds/bookmaker to null.');
+  if(selectedStats.includes('tackles')&&availableStats.includes('tackles'))
+    statInstructions.push('- TACKLES: 1 leg. Midfielders only, never Harley Reid. Use players from live markets.');
+  if(selectedStats.includes('tackles')&&!availableStats.includes('tackles'))
+    statInstructions.push('- TACKLES: 1 leg. Pick a midfielder from the confirmed players list above. Never Harley Reid. No live odds — set odds/bookmaker to null.');
+  if(selectedStats.includes('marks'))
+    statInstructions.push('- MARKS: 1 leg. Pick a key forward or defender from the confirmed players list above. Use a realistic 3+ or 4+ line. No live odds — set odds/bookmaker to null.');
+  if(selectedStats.includes('clearances'))
+    statInstructions.push('- CLEARANCES: 1 leg. Pick a dominant inside midfielder from the confirmed players list above. Use a 6+ or 7+ line. No live odds — set odds/bookmaker to null.');
+  if(selectedStats.includes('kicks'))
+    statInstructions.push('- KICKS: 1 leg. Pick a high-usage outside midfielder or defender from confirmed players. No live odds — set odds/bookmaker to null.');
+  if(selectedStats.includes('handballs'))
+    statInstructions.push('- HANDBALLS: 1 leg. Pick an inside midfielder from confirmed players. No live odds — set odds/bookmaker to null.');
+  if(selectedStats.includes('hitouts'))
+    statInstructions.push('- HIT-OUTS: 1 leg. Pick the dominant ruckman from confirmed players. Use 25+ or 30+ line. No live odds — set odds/bookmaker to null.');
+
+  const squadConstraint = namedTeams.trim()
+    ? '\nNAMED PLAYERS FOR THIS MATCH (only suggest players from these lists):\n'+namedTeams.trim()+'\nCRITICAL: Do not suggest any player not in the named teams above.\n'
+    : '\nNamed teams not provided — use your best 2026 AFL knowledge but only suggest players currently on AFL lists.\n';
+
+  return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+(confirmedNote?confirmedNote+'\n':'')+(squadConstraint||'')+(context?'Context: '+context:'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
 }
 
 
@@ -975,10 +998,9 @@ async function runAnalysis(){
   const btn=document.getElementById('buildBtn');
   const errEl=document.getElementById('aiError');
   btn.disabled=true;
-  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> LOADING YOUR LEARNINGS...</div>`;
   errEl.style.display='none';
-  await fetchInsights();
   btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> BUILDING YOUR ${numLegs}-LEG MULTI...</div>`;
+  await fetchInsights();
   try{
     const text=await callClaude(buildPrompt(),1500);
     result=JSON.parse(text.replace(/```json|```/g,'').trim());
@@ -1245,7 +1267,7 @@ function setTab(t){
   const alt=(result.alternativeLegs||[]).length?(result.alternativeLegs||[]).map(leg=>legCardHTML(leg,99,oddsMap)).join(''):`<div class="empty" style="padding:24px"><div style="color:var(--dim);font-size:13px">No alternatives suggested</div></div>`;
   document.getElementById('legsList').innerHTML=t==='recommended'?rec:alt;
 }
-function goHome(){screen='home';selectedGame=null;markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;manualLegs=[];showManualOdds=false;venue=null;render();if(!gamesLoaded)fetchGames();}
+function goHome(){screen='home';selectedGame=null;markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;namedTeams='';venue=null;render();if(!gamesLoaded)fetchGames();}
 function goSetup(){screen='setup';render();document.getElementById('marketsLoading').style.display='none';document.getElementById('statsStatus').style.display='none';if(markets.length>0)renderMarketsBadge();if(playerStats.length>0)renderStatsBadge();}
 
 // PWA service worker
