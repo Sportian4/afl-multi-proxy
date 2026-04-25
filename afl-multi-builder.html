@@ -13,24 +13,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:       #13151a;
-  --bg2:      #1c1f27;
-  --bg3:      #242830;
-  --bg4:      #2d3240;
-  --border:   #2e3340;
-  --border2:  #252a36;
-  --gold:     #e8a020;
-  --gold-dim: rgba(232,160,32,0.1);
-  --green:    #2ecc8a;
-  --green-dim:rgba(46,204,138,0.1);
-  --red:      #e05555;
-  --red-dim:  rgba(224,85,85,0.1);
-  --blue:     #4a90d9;
-  --blue-dim: rgba(74,144,217,0.1);
-  --text:     #dde3ee;
-  --muted:    #7a8aa8;
-  --dim:      #4a5570;
-  --dimmer:   #2a3048;
+  --bg:       #0a0f1a;
+  --bg2:      #111827;
+  --bg3:      #1a2235;
+  --bg4:      #222d42;
+  --border:   #2a3a55;
+  --border2:  #1e2d45;
+  --gold:     #f0a500;
+  --gold-dim: rgba(240,165,0,0.12);
+  --green:    #00e676;
+  --green-dim:rgba(0,230,118,0.1);
+  --red:      #ff4444;
+  --red-dim:  rgba(255,68,68,0.1);
+  --blue:     #2979ff;
+  --blue-dim: rgba(41,121,255,0.12);
+  --text:     #e8edf5;
+  --muted:    #8899bb;
+  --dim:      #4a5e80;
+  --dimmer:   #2a3a55;
   --font-display: 'Bebas Neue', sans-serif;
   --font-body:    'DM Sans', sans-serif;
 }
@@ -43,6 +43,13 @@ body{
   min-height:100vh;
   position:relative;
 }
+/* Subtle grain overlay */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:0.4;
+}
 #header,#main{position:relative;z-index:1;}
 
 /* FONTS */
@@ -50,10 +57,11 @@ body{
 
 /* HEADER */
 #header{
-  background:var(--bg2);
+  background:linear-gradient(180deg,#0d1526 0%,#0a0f1a 100%);
   border-bottom:1px solid var(--border);
   padding:12px 16px 0;
   position:sticky;top:0;z-index:100;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4);
 }
 .header-top{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px;margin-bottom:12px;}
 .logo-wrap{display:flex;align-items:center;gap:10px;flex:1;}
@@ -62,7 +70,7 @@ body{
   background:linear-gradient(135deg,#f0a500,#c07800);
   display:flex;align-items:center;justify-content:center;
   font-size:20px;flex-shrink:0;
-  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+  box-shadow:0 0 16px rgba(240,165,0,0.3);
 }
 .logo-text{}
 .logo-title{font-family:var(--font-display);font-size:22px;color:#fff;letter-spacing:1px;line-height:1;}
@@ -104,7 +112,7 @@ body{
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.3s ease forwards;}
-@keyframes pulse{0%,100%{opacity:0.9;}50%{opacity:0.4;}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 1.5s ease infinite;margin-right:4px;}
 
 /* GAME CARDS */
@@ -123,7 +131,7 @@ body{
   content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
   background:var(--border);transition:background 0.2s;
 }
-.game-card:hover{border-color:var(--gold);box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+.game-card:hover{border-color:var(--gold);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.3);}
 .game-card:hover::before{background:var(--gold);}
 .game-card.has-odds::before{background:var(--green);}
 .game-time{font-size:10px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
@@ -162,7 +170,7 @@ body{
 
 /* MATCH HEADER CARD */
 .match-header{
-  background:var(--bg2);
+  background:linear-gradient(135deg,var(--bg2),var(--bg3));
   border:1px solid var(--border);border-radius:14px;
   padding:16px;margin-bottom:16px;
 }
@@ -240,7 +248,7 @@ textarea{resize:vertical;padding:10px 13px;}
   border:none;border-radius:12px;color:#0a0f1a;
   font-family:var(--font-display);font-size:20px;letter-spacing:2px;
   transition:all 0.2s;
-  box-shadow:0 2px 12px rgba(0,0,0,0.3);
+  box-shadow:0 4px 20px rgba(240,165,0,0.25);
 }
 .build-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(240,165,0,0.35);}
 .build-btn:disabled{background:var(--bg3);color:var(--dim);cursor:not-allowed;box-shadow:none;}
@@ -248,7 +256,7 @@ textarea{resize:vertical;padding:10px 13px;}
 
 /* RESULTS */
 .result-header{
-  background:var(--bg2);
+  background:linear-gradient(135deg,var(--bg2),var(--bg3));
   border:1px solid var(--border);border-radius:14px;
   padding:16px;margin-bottom:16px;
 }
@@ -318,15 +326,16 @@ textarea{resize:vertical;padding:10px 13px;}
 
 /* SPORTSBET BUTTON */
 .sportsbet-btn{
-  width:100%;padding:13px;
-  background:var(--bg3);
-  border:1px solid var(--border);
-  border-radius:12px;color:var(--muted);
-  font-family:var(--font-display);font-size:17px;letter-spacing:1.5px;
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,#1a3a6b,#0f2550);
+  border:1px solid rgba(41,121,255,0.3);
+  border-radius:12px;color:#fff;
+  font-family:var(--font-display);font-size:18px;letter-spacing:1.5px;
   margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;
   text-decoration:none;transition:all 0.2s;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);
 }
-.sportsbet-btn:hover{border-color:var(--gold);color:var(--gold);}
+.sportsbet-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,0.4);}
 
 /* BOTTOM BTNS */
 .bottom-btns{display:flex;gap:8px;margin-top:20px;}
@@ -403,7 +412,7 @@ textarea{resize:vertical;padding:10px 13px;}
       <div class="logo-icon">🏉</div>
       <div class="logo-text">
         <div class="logo-title">AFL MULTI</div>
-        <div class="logo-sub">AFL · Same Game Multis</div>
+        <div class="logo-sub">Live Odds · AI · 2026</div>
       </div>
     </div>
     <div class="api-pill" id="apiBadge" style="display:none">
@@ -590,7 +599,7 @@ async function checkAllMarkets(){
 
 function selectGame(id){
   selectedGame=games.find(g=>g.id===id);
-  markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;namedTeams='';
+  markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;
   venue=getVenue(selectedGame.home_team);
   screen='setup';render();
   fetchMarkets();
@@ -939,64 +948,49 @@ function buildPrompt(){
   const riskDesc=riskLevel==='safe'?'Safe only — avoid anything under 70% confidence.':riskLevel==='aggressive'?'Include higher-value legs with bigger odds.':'Balanced — mix of safe and value legs.';
   const marketList=hasMarkets?filteredMarkets.map(m=>`${m.player} | ${m.stat} | ${m.line}+ | $${m.odds} | ${m.bookmaker}`).join('\n'):'';
   const lineBetInstruction=lineBet==='none'?'Do not include a match line bet.':lineBet==='ai'?`Decide if a match line bet adds value. If confident, include it as one of the ${numLegs} legs.`:lineBet==='home'?`Include a match line leg backing ${home}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`:`Include a match line leg backing ${away}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`;
-
   const statsLines=playerStats.map(p=>{
     const s=p.season2026||{};const parts=[p.name];
     if(s.avgDisposals) parts.push(`avg ${s.avgDisposals} disp`);
     if(s.avgGoals!=null) parts.push(`${s.avgGoals} goals/gm`);
     if(s.last5Avg) parts.push(`L5: ${s.last5Avg}`);
     if(s.recentDisposals) parts.push(`recent: ${s.recentDisposals.join(',')}`);
-    if(s.hitRates&&s.hitRates['20plus']) parts.push(`20+ hits ${s.hitRates['20plus'].season}%`);
-    if(s.hitRates&&s.hitRates['25plus']) parts.push(`25+ hits ${s.hitRates['25plus'].season}%`);
+    if(s.hitRates?.['20plus']) parts.push(`20+ hits ${s.hitRates['20plus'].season}%`);
+    if(s.hitRates?.['25plus']) parts.push(`25+ hits ${s.hitRates['25plus'].season}%`);
     return parts.join(' | ');
   });
-  const statsSection=statsLines.length>0?'\nLIVE 2026 STATS:\n'+statsLines.join('\n')+'\n':'';
-  const venueSection=venue?'\nVENUE: '+venue.name+' ('+venue.length+'x'+venue.width+'m, '+venue.size+')\n- Disposal mod: '+(venue.disposalMod>0?'+':'')+venue.disposalMod+' Goals mod: '+(venue.goalsMod>0?'+':'')+venue.goalsMod+' Tackle mod: '+(venue.tackleMod>0?'+':'')+venue.tackleMod+'\n- '+venue.notes.join(' · ')+'\n':'';
+  const statsSection=statsLines.length>0?`\nLIVE 2026 STATS (ground truth):\n${statsLines.join('\n')}\n`:'';
+  const venueSection=venue?`\nVENUE: ${venue.name} (${venue.length}×${venue.width}m, ${venue.size})\n- Disposal mod: ${venue.disposalMod>0?'+':''}${venue.disposalMod} · Goals mod: ${venue.goalsMod>0?'+':''}${venue.goalsMod} · Tackle mod: ${venue.tackleMod>0?'+':''}${venue.tackleMod}\n- ${venue.notes.join(' · ')}\n`:'';
   const alerts=getWeatherAlerts();
-  const weatherSection=weather?'\nWEATHER: '+weather.temp+'C, wind '+weather.wind+'km/h, rain '+(weather.rainMm>0?weather.rainMm+'mm':'none')+'\n'+alerts.map(a=>a.msg).join('\n')+(weather.wind>40?'\nDO NOT suggest any goals legs.':'')+'\n':'';
-  const insightsSection=insights&&insights.rules&&insights.rules.length>0?'\nPERSONAL INTELLIGENCE:\n'+insights.rules.join('\n')+'\n':'';
+  const weatherSection=weather?`\nWEATHER: ${weather.temp}°C, wind ${weather.wind}km/h, rain ${weather.rainMm>0?weather.rainMm+'mm':'none'}\n${alerts.map(a=>a.msg).join('\n')}\n${weather.wind>40?'DO NOT suggest any goals legs — extreme wind.':''}\n`:'';
+  const insightsSection=insights?.rules?.length>0?`\nPERSONAL INTELLIGENCE (from your tracker — apply these):\n${insights.rules.join('\n')}\n`:'';
 
-  // Only use stats that have live market data when markets are available
-  const availableStats=markets.length>0?selectedStats.filter(s=>filteredMarkets.some(m=>m.stat===s)):selectedStats;
-  const aiOnlyStats=selectedStats.filter(s=>!availableStats.includes(s));
-  // Build stat type instructions
-  // Confirmed playing players from live odds markets - these are 100% named and playing
-  const confirmedPlayers=[...new Set(markets.map(m=>m.player))];
-  const hasConfirmed=confirmedPlayers.length>0;
+  return `You are an expert AFL statistician and betting analyst. Build the best ${numLegs}-leg multi for: ${home} vs ${away}.
+${context?`Context: ${context}`:''}
+Team focus: ${teamFilter} · Risk: ${riskDesc} · Line bet: ${lineBetInstruction}
+${venueSection}${weatherSection}${statsSection}${insightsSection}
+${hasMarkets?`Live markets (confirmed named players only):\n${marketList}`:`No live markets — use 2026 AFL knowledge.`}
 
-  const statInstructions=[];
-  if(selectedStats.includes('disposals'))
-    statInstructions.push('- DISPOSALS: 2-3 legs. Use players from live markets above.');
-  if(selectedStats.includes('goals'))
-    statInstructions.push('- GOALS: 1-2 legs. Use 2+ line not 3+. ONLY pick players from the CONFIRMED PLAYING list above — identify which ones are forwards/key forwards and use those. Set odds/bookmaker to null.');
-  if(selectedStats.includes('tackles'))
-    statInstructions.push('- TACKLES: 1 leg. Midfielders only, never Harley Reid. ONLY use players from the CONFIRMED PLAYING list above — identify which ones are midfielders. Set odds/bookmaker to null if no live tackle odds.');
-  if(selectedStats.includes('marks'))
-    statInstructions.push('- MARKS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify which ones are key forwards or defenders. Use 3+ or 4+ line. Set odds/bookmaker to null.');
-  if(selectedStats.includes('clearances'))
-    statInstructions.push('- CLEARANCES: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify which ones are inside midfielders. Use 6+ or 7+ line. Set odds/bookmaker to null.');
-  if(selectedStats.includes('kicks'))
-    statInstructions.push('- KICKS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify outside mids or defenders. Set odds/bookmaker to null.');
-  if(selectedStats.includes('handballs'))
-    statInstructions.push('- HANDBALLS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify inside midfielders. Set odds/bookmaker to null.');
-  if(selectedStats.includes('hitouts'))
-    statInstructions.push('- HIT-OUTS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify the ruckman. Use 25+ or 30+ line. Set odds/bookmaker to null.');
+RULES:
+- ${hasMarkets?'ONLY suggest players from live markets above':'Only suggest likely named players based on 2026 form'}
+- Never contradict live 2026 stats
+- Venue and weather modifiers MUST influence your selections
+- Goals: max 2, use 2+ not 3+, in-form forwards only, never if avg <0.5/game
+- Tackles: midfielders only, never Harley Reid
+- Anchor with 2-3 disposal legs
+- Exactly ${numLegs} legs total · Flag weakest leg
 
-  const squadConstraint = namedTeams.trim()
-    ? '\nNAMED PLAYERS FOR THIS MATCH (only suggest players from these lists):\n'+namedTeams.trim()+'\nCRITICAL: Do not suggest any player not in the named teams above.\n'
-    : '\nNamed teams not provided — use your best 2026 AFL knowledge but only suggest players currently on AFL lists.\n';
-
-  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing (from live odds markets):\n'+confirmedPlayers.join(', ')+'\n\nCRITICAL: You may ONLY suggest players from the CONFIRMED PLAYING list above. Do not suggest any player not on this list under any circumstances.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+(context?'Context: '+context:'')+'\nTeam focus: '+teamFilter+(context?'Context: '+context:'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
+Respond ONLY with valid JSON, no markdown:
+{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences with stats/venue/weather>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}`;
 }
-
 
 async function runAnalysis(){
   const btn=document.getElementById('buildBtn');
   const errEl=document.getElementById('aiError');
   btn.disabled=true;
+  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> LOADING YOUR LEARNINGS...</div>`;
   errEl.style.display='none';
-  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> BUILDING YOUR ${numLegs}-LEG MULTI...</div>`;
   await fetchInsights();
+  btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> BUILDING YOUR ${numLegs}-LEG MULTI...</div>`;
   try{
     const text=await callClaude(buildPrompt(),1500);
     result=JSON.parse(text.replace(/```json|```/g,'').trim());
@@ -1167,81 +1161,6 @@ async function scanSlip(input){
   }catch(e){scanEl.innerHTML=`<div class="error-box">⚠️ Couldn't read slip — try a clearer photo with good lighting.</div>`;}
 }
 
-// ── MANUAL ODDS ──────────────────────────────────────
-function toggleManualOdds(){
-  showManualOdds=!showManualOdds;
-  const panel=document.getElementById('manualOddsPanel');
-  const btn=document.getElementById('manualOddsToggle');
-  if(panel){panel.style.display=showManualOdds?'block':'none';}
-  if(btn){btn.textContent=showManualOdds?'− HIDE':'+ ADD';}
-  if(showManualOdds&&manualLegs.length===0) addManualLeg();
-}
-
-function addManualLeg(){
-  manualLegs.push({player:'',stat:'goals',line:'',odds:'',bookmaker:'Sportsbet'});
-  renderManualLegs();
-}
-
-function removeManualLeg(idx){
-  manualLegs.splice(idx,1);
-  renderManualLegs();
-}
-
-function updateManualLeg(idx,field,val){
-  manualLegs[idx][field]=val;
-}
-
-function renderManualLegs(){
-  const el=document.getElementById('manualLegsList');
-  if(!el) return;
-  el.innerHTML=manualLegs.map((leg,i)=>`
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:11px;color:var(--muted);font-weight:600">Leg ${i+1}</div>
-        <button onclick="removeManualLeg(${i})" style="background:none;border:none;color:var(--dim);font-size:12px;cursor:pointer">✕ Remove</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-        <div>
-          <div class="input-label">Player name</div>
-          <input type="text" placeholder="e.g. Tom Hawkins" value="${leg.player}" oninput="updateManualLeg(${i},'player',this.value)" style="font-size:12px;padding:7px 10px">
-        </div>
-        <div>
-          <div class="input-label">Stat type</div>
-          <select onchange="updateManualLeg(${i},'stat',this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;color:var(--text);padding:7px 10px;font-size:12px;font-family:var(--font-body)">
-            <option value="goals" ${leg.stat==='goals'?'selected':''}>🥅 Goals</option>
-            <option value="marks" ${leg.stat==='marks'?'selected':''}>🙌 Marks</option>
-            <option value="disposals" ${leg.stat==='disposals'?'selected':''}>🏉 Disposals</option>
-            <option value="tackles" ${leg.stat==='tackles'?'selected':''}>💪 Tackles</option>
-            <option value="clearances" ${leg.stat==='clearances'?'selected':''}>⚡ Clearances</option>
-            <option value="kicks" ${leg.stat==='kicks'?'selected':''}>👟 Kicks</option>
-            <option value="handballs" ${leg.stat==='handballs'?'selected':''}>🤚 Handballs</option>
-            <option value="hitouts" ${leg.stat==='hitouts'?'selected':''}>✊ Hit-Outs</option>
-          </select>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-        <div>
-          <div class="input-label">Line (e.g. 2)</div>
-          <input type="number" step="0.5" placeholder="2" value="${leg.line}" oninput="updateManualLeg(${i},'line',this.value)" style="font-size:12px;padding:7px 10px">
-        </div>
-        <div>
-          <div class="input-label">Odds (e.g. 2.50)</div>
-          <input type="number" step="0.01" placeholder="2.50" value="${leg.odds}" oninput="updateManualLeg(${i},'odds',this.value)" style="font-size:12px;padding:7px 10px">
-        </div>
-        <div>
-          <div class="input-label">Bookmaker</div>
-          <select onchange="updateManualLeg(${i},'bookmaker',this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;color:var(--text);padding:7px 10px;font-size:12px;font-family:var(--font-body)">
-            <option value="Sportsbet">Sportsbet</option>
-            <option value="TAB">TAB</option>
-            <option value="Ladbrokes">Ladbrokes</option>
-            <option value="Pointsbet">Pointsbet</option>
-            <option value="Betr">Betr</option>
-          </select>
-        </div>
-      </div>
-    </div>`).join('');
-}
-
 // ── HELPERS ───────────────────────────────────────────
 function setNumLegs(n){numLegs=n;redrawSetup();}
 function toggleStat(id){selectedStats=selectedStats.includes(id)?selectedStats.filter(s=>s!==id):[...selectedStats,id];redrawSetup();}
@@ -1263,7 +1182,7 @@ function setTab(t){
   const alt=(result.alternativeLegs||[]).length?(result.alternativeLegs||[]).map(leg=>legCardHTML(leg,99,oddsMap)).join(''):`<div class="empty" style="padding:24px"><div style="color:var(--dim);font-size:13px">No alternatives suggested</div></div>`;
   document.getElementById('legsList').innerHTML=t==='recommended'?rec:alt;
 }
-function goHome(){screen='home';selectedGame=null;markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;namedTeams='';venue=null;render();if(!gamesLoaded)fetchGames();}
+function goHome(){screen='home';selectedGame=null;markets=[];playerStats=[];lineups={home:[],away:[]};result=null;weather=null;venue=null;render();if(!gamesLoaded)fetchGames();}
 function goSetup(){screen='setup';render();document.getElementById('marketsLoading').style.display='none';document.getElementById('statsStatus').style.display='none';if(markets.length>0)renderMarketsBadge();if(playerStats.length>0)renderStatsBadge();}
 
 // PWA service worker
