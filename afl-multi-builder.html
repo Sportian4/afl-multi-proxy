@@ -960,37 +960,33 @@ function buildPrompt(){
   const availableStats=markets.length>0?selectedStats.filter(s=>filteredMarkets.some(m=>m.stat===s)):selectedStats;
   const aiOnlyStats=selectedStats.filter(s=>!availableStats.includes(s));
   // Build stat type instructions
-  // Get confirmed player names from live markets to use across all stat types
-  const confirmedPlayers=[...new Set(filteredMarkets.map(m=>m.player))];
-  const confirmedNote=confirmedPlayers.length>0
-    ? 'CONFIRMED PLAYING (from live odds markets): '+confirmedPlayers.join(', ')
-    : '';
+  // Confirmed playing players from live odds markets - these are 100% named and playing
+  const confirmedPlayers=[...new Set(markets.map(m=>m.player))];
+  const hasConfirmed=confirmedPlayers.length>0;
 
   const statInstructions=[];
-  if(selectedStats.includes('disposals')&&availableStats.includes('disposals'))
+  if(selectedStats.includes('disposals'))
     statInstructions.push('- DISPOSALS: 2-3 legs. Use players from live markets above.');
   if(selectedStats.includes('goals'))
-    statInstructions.push('- GOALS: 1-2 legs. Use 2+ line not 3+. Pick forwards from the confirmed players list above who average 0.5+ goals/game. No live odds — set odds/bookmaker to null.');
-  if(selectedStats.includes('tackles')&&availableStats.includes('tackles'))
-    statInstructions.push('- TACKLES: 1 leg. Midfielders only, never Harley Reid. Use players from live markets.');
-  if(selectedStats.includes('tackles')&&!availableStats.includes('tackles'))
-    statInstructions.push('- TACKLES: 1 leg. Pick a midfielder from the confirmed players list above. Never Harley Reid. No live odds — set odds/bookmaker to null.');
+    statInstructions.push('- GOALS: 1-2 legs. Use 2+ line not 3+. ONLY pick players from the CONFIRMED PLAYING list above — identify which ones are forwards/key forwards and use those. Set odds/bookmaker to null.');
+  if(selectedStats.includes('tackles'))
+    statInstructions.push('- TACKLES: 1 leg. Midfielders only, never Harley Reid. ONLY use players from the CONFIRMED PLAYING list above — identify which ones are midfielders. Set odds/bookmaker to null if no live tackle odds.');
   if(selectedStats.includes('marks'))
-    statInstructions.push('- MARKS: 1 leg. Pick a key forward or defender from the confirmed players list above. Use a realistic 3+ or 4+ line. No live odds — set odds/bookmaker to null.');
+    statInstructions.push('- MARKS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify which ones are key forwards or defenders. Use 3+ or 4+ line. Set odds/bookmaker to null.');
   if(selectedStats.includes('clearances'))
-    statInstructions.push('- CLEARANCES: 1 leg. Pick a dominant inside midfielder from the confirmed players list above. Use a 6+ or 7+ line. No live odds — set odds/bookmaker to null.');
+    statInstructions.push('- CLEARANCES: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify which ones are inside midfielders. Use 6+ or 7+ line. Set odds/bookmaker to null.');
   if(selectedStats.includes('kicks'))
-    statInstructions.push('- KICKS: 1 leg. Pick a high-usage outside midfielder or defender from confirmed players. No live odds — set odds/bookmaker to null.');
+    statInstructions.push('- KICKS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify outside mids or defenders. Set odds/bookmaker to null.');
   if(selectedStats.includes('handballs'))
-    statInstructions.push('- HANDBALLS: 1 leg. Pick an inside midfielder from confirmed players. No live odds — set odds/bookmaker to null.');
+    statInstructions.push('- HANDBALLS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify inside midfielders. Set odds/bookmaker to null.');
   if(selectedStats.includes('hitouts'))
-    statInstructions.push('- HIT-OUTS: 1 leg. Pick the dominant ruckman from confirmed players. Use 25+ or 30+ line. No live odds — set odds/bookmaker to null.');
+    statInstructions.push('- HIT-OUTS: 1 leg. ONLY use players from the CONFIRMED PLAYING list above — identify the ruckman. Use 25+ or 30+ line. Set odds/bookmaker to null.');
 
   const squadConstraint = namedTeams.trim()
     ? '\nNAMED PLAYERS FOR THIS MATCH (only suggest players from these lists):\n'+namedTeams.trim()+'\nCRITICAL: Do not suggest any player not in the named teams above.\n'
     : '\nNamed teams not provided — use your best 2026 AFL knowledge but only suggest players currently on AFL lists.\n';
 
-  return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+(confirmedNote?confirmedNote+'\n':'')+(squadConstraint||'')+(context?'Context: '+context:'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
+  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing (from live odds markets):\n'+confirmedPlayers.join(', ')+'\n\nCRITICAL: You may ONLY suggest players from the CONFIRMED PLAYING list above. Do not suggest any player not on this list under any circumstances.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+(context?'Context: '+context:'')+'\nTeam focus: '+teamFilter+(context?'Context: '+context:'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
 }
 
 
