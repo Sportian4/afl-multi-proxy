@@ -62,7 +62,7 @@ app.get('/games', async (req, res) => {
 });
 
 app.get('/markets/:eventId', async (req, res) => {
-  const markets = ['player_disposals','player_goals','player_marks','player_tackles'].join(',');
+  const markets = ['player_disposals','player_goals','player_tackles'].join(',');
   try {
     const r = await fetch(`${BASE}/sports/${AFL_SPORT}/events/${req.params.eventId}/odds?apiKey=${ODDS_API_KEY}&regions=au&markets=${markets}&oddsFormat=decimal&dateFormat=iso`);
     const data = await r.json();
