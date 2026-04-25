@@ -5,7 +5,7 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ODDS_API_KEY = process.env.ODDS_API_KEY || '400af89e913b5ebcc39b09af5dfadcc6';
+const ODDS_API_KEY = process.env.ODDS_API_KEY || '90462c6e64ffd14be6ce854222f5c7e9';
 const AFL_SPORT = 'aussierules_afl';
 const BASE = 'https://api.the-odds-api.com/v4';
 
@@ -30,7 +30,7 @@ app.get('/games', async (req, res) => {
 });
 
 app.get('/markets/:eventId', async (req, res) => {
-  const markets = ['player_disposals','player_goals','player_tackles'].join(',');
+  const markets = ['player_disposals','player_goals','player_marks','player_tackles','player_assists','player_score_involvements'].join(',');
   try {
     const r = await fetch(
       `${BASE}/sports/${AFL_SPORT}/events/${req.params.eventId}/odds?apiKey=${ODDS_API_KEY}&regions=au&markets=${markets}&oddsFormat=decimal&dateFormat=iso`
@@ -38,6 +38,39 @@ app.get('/markets/:eventId', async (req, res) => {
     const data = await r.json();
     res.set('x-requests-remaining', r.headers.get('x-requests-remaining'));
     res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+// Check all available markets for a game - helps discover what's actually available
+app.get('/markets/check/:eventId', async (req, res) => {
+  const allMarkets = [
+    'player_disposals','player_goals','player_marks','player_tackles',
+    'player_assists','player_score_involvements','player_fantasy_points',
+    'player_kicks','player_handballs','player_clearances','player_hitouts',
+    'player_shots_at_goal','player_goal_involvements','player_first_goal_scorer',
+    'player_anytime_goal_scorer','player_last_goal_scorer',
+  ].join(',');
+  try {
+    const r = await fetch(
+      `${BASE}/sports/${AFL_SPORT}/events/${req.params.eventId}/odds?apiKey=${ODDS_API_KEY}&regions=au&markets=${allMarkets}&oddsFormat=decimal&dateFormat=iso`
+    );
+    const data = await r.json();
+    res.set('x-requests-remaining', r.headers.get('x-requests-remaining'));
+    // Return just which markets have data
+    const available = [];
+    if (data.bookmakers) {
+      for (const bm of data.bookmakers) {
+        for (const mkt of bm.markets) {
+          if (!available.find(m => m.key === mkt.key)) {
+            available.push({ key: mkt.key, bookmaker: bm.title, playerCount: mkt.outcomes.filter(o => o.name === 'Over').length });
+          }
+        }
+      }
+    }
+    res.json({ available, error: data.message || null });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
