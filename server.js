@@ -49,6 +49,31 @@ app.get('/debug', (req, res) => {
     </script></body></html>`);
 });
 
+app.get('/discover/:eventId', async (req, res) => {
+  // Try every possible player prop market to find what's available
+  const toTry = [
+    'player_disposals','player_goals','player_tackles','player_marks',
+    'player_kicks','player_handballs','player_clearances','player_hitouts',
+    'player_fantasy_points','player_score_involvements','player_assists',
+    'player_goal_scorer_anytime','player_anytime_goal_scorer',
+    'player_first_goal_scorer','player_last_goal_scorer',
+    'player_shots_at_goal','player_goal_involvements',
+  ];
+  const results = {};
+  for (const market of toTry) {
+    try {
+      const r = await fetch(`${BASE}/sports/${AFL_SPORT}/events/${req.params.eventId}/odds?apiKey=${ODDS_API_KEY}&regions=au&markets=${market}&oddsFormat=decimal&dateFormat=iso`);
+      const data = await r.json();
+      if (data.error_code) { results[market] = 'NOT AVAILABLE: ' + data.message; }
+      else if (data.bookmakers && data.bookmakers.length > 0) {
+        const playerCount = data.bookmakers[0].markets[0]?.outcomes?.length || 0;
+        results[market] = 'AVAILABLE - ' + playerCount + ' players from ' + data.bookmakers.length + ' bookmakers';
+      } else { results[market] = 'no data'; }
+    } catch(e) { results[market] = 'error: ' + e.message; }
+  }
+  res.json(results);
+});
+
 app.get('/games', async (req, res) => {
   try {
     const r = await fetch(`${BASE}/sports/${AFL_SPORT}/events?apiKey=${ODDS_API_KEY}&dateFormat=iso`);
@@ -62,7 +87,7 @@ app.get('/games', async (req, res) => {
 });
 
 app.get('/markets/:eventId', async (req, res) => {
-  const markets = ['player_disposals','player_goals','player_tackles','player_anytime_goalscorer','player_first_goalscorer'].join(',');
+  const markets = ['player_disposals','player_goals','player_tackles'].join(',');
   try {
     const r = await fetch(`${BASE}/sports/${AFL_SPORT}/events/${req.params.eventId}/odds?apiKey=${ODDS_API_KEY}&regions=au&markets=${markets}&oddsFormat=decimal&dateFormat=iso`);
     const data = await r.json();
