@@ -19,6 +19,8 @@ app.get('/app', (req, res) => {
   res.send(APP_HTML);
 });
 
+
+app.get('/debug', (req, res) => { res.setHeader('Content-Type', 'text/html'); res.send("<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>AFL Test</title></head>\n<body style=\"background:#13151a;color:#fff;font-family:sans-serif;padding:20px\">\n<h2>AFL Multi - Debug Mode</h2>\n<div id=\"status\">Starting...</div>\n<div id=\"games\"></div>\n<script>\nconst PROXY = 'https://afl-multi-proxy.onrender.com';\n\ndocument.getElementById('status').textContent = 'Fetching games...';\n\nfetch(PROXY + '/games')\n  .then(r => r.json())\n  .then(data => {\n    const afl = Array.isArray(data) ? data.filter(g => g.sport_key === 'aussierules_afl') : [];\n    document.getElementById('status').textContent = 'Total games: ' + (Array.isArray(data)?data.length:0) + ' | AFL only: ' + afl.length;\n    document.getElementById('games').innerHTML = afl.map(g => '<p>' + g.home_team + ' vs ' + g.away_team + '</p>').join('');\n  })\n  .catch(e => {\n    document.getElementById('status').textContent = 'ERROR: ' + e.message;\n  });\n</script>\n</body>\n</html>"); });
 app.get('/games', async (req, res) => {
   try {
     const r = await fetch(`${BASE}/sports/${AFL_SPORT}/events?apiKey=${ODDS_API_KEY}&dateFormat=iso`);
