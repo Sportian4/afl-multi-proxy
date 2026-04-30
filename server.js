@@ -159,30 +159,42 @@ app.post('/analyse', async (req, res) => {
   }
 });
 
-// Shared intel — stored server-side so all users get the same data
-let sharedIntel = [];
+// Shared intel — saved to disk so it survives server restarts
+const fs = require('fs');
+const INTEL_FILE = '/tmp/afl_intel.json';
+
+function loadIntel() {
+  try { return JSON.parse(fs.readFileSync(INTEL_FILE, 'utf8')); } 
+  catch(e) { return []; }
+}
+function saveIntel(data) {
+  try { fs.writeFileSync(INTEL_FILE, JSON.stringify(data)); } 
+  catch(e) { console.log('Intel save error:', e.message); }
+}
 
 app.get('/intel', (req, res) => {
-  res.json(sharedIntel);
+  res.json(loadIntel());
 });
 
 app.post('/intel', (req, res) => {
   const { entry } = req.body;
   if (!entry || !entry.label || !entry.summary) return res.status(400).json({ error: 'Invalid entry' });
-  sharedIntel.unshift({ ...entry, date: new Date().toISOString() });
-  // Keep last 20 entries
-  sharedIntel = sharedIntel.slice(0, 20);
-  res.json({ success: true, count: sharedIntel.length });
+  const intel = loadIntel();
+  intel.unshift({ ...entry, date: new Date().toISOString() });
+  saveIntel(intel.slice(0, 20));
+  res.json({ success: true, count: intel.length });
 });
 
 app.delete('/intel/:idx', (req, res) => {
+  const intel = loadIntel();
   const idx = parseInt(req.params.idx);
-  if (idx >= 0 && idx < sharedIntel.length) sharedIntel.splice(idx, 1);
-  res.json({ success: true, count: sharedIntel.length });
+  if (idx >= 0 && idx < intel.length) intel.splice(idx, 1);
+  saveIntel(intel);
+  res.json({ success: true, count: intel.length });
 });
 
 app.delete('/intel', (req, res) => {
-  sharedIntel = [];
+  saveIntel([]);
   res.json({ success: true });
 });
 
