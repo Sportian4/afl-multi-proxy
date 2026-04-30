@@ -159,42 +159,54 @@ app.post('/analyse', async (req, res) => {
   }
 });
 
-// Shared intel — saved to disk so it survives server restarts
-const fs = require('fs');
-const INTEL_FILE = '/tmp/afl_intel.json';
+// Shared intel — stored in JSONBin.io (persists forever, survives restarts)
+const JSONBIN_ID = '69f304e836566621a80b3273';
+const JSONBIN_KEY = '$2a$10$hlpuCiJOHsN.zbBnf7JioOqF0gKTx599Dmk4eJuJ2D.Bgh9Ahi8Z2';
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
-function loadIntel() {
-  try { return JSON.parse(fs.readFileSync(INTEL_FILE, 'utf8')); } 
-  catch(e) { return []; }
-}
-function saveIntel(data) {
-  try { fs.writeFileSync(INTEL_FILE, JSON.stringify(data)); } 
-  catch(e) { console.log('Intel save error:', e.message); }
+async function loadIntel() {
+  try {
+    const r = await fetch(JSONBIN_URL + '/latest', {
+      headers: { 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Meta': 'false' }
+    });
+    const data = await r.json();
+    return Array.isArray(data.intel) ? data.intel : [];
+  } catch(e) { return []; }
 }
 
-app.get('/intel', (req, res) => {
-  res.json(loadIntel());
+async function saveIntel(intel) {
+  try {
+    await fetch(JSONBIN_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body: JSON.stringify({ intel: intel.slice(0, 20) })
+    });
+  } catch(e) { console.log('JSONBin save error:', e.message); }
+}
+
+app.get('/intel', async (req, res) => {
+  res.json(await loadIntel());
 });
 
-app.post('/intel', (req, res) => {
+app.post('/intel', async (req, res) => {
   const { entry } = req.body;
   if (!entry || !entry.label || !entry.summary) return res.status(400).json({ error: 'Invalid entry' });
-  const intel = loadIntel();
+  const intel = await loadIntel();
   intel.unshift({ ...entry, date: new Date().toISOString() });
-  saveIntel(intel.slice(0, 20));
+  await saveIntel(intel);
   res.json({ success: true, count: intel.length });
 });
 
-app.delete('/intel/:idx', (req, res) => {
-  const intel = loadIntel();
+app.delete('/intel/:idx', async (req, res) => {
+  const intel = await loadIntel();
   const idx = parseInt(req.params.idx);
   if (idx >= 0 && idx < intel.length) intel.splice(idx, 1);
-  saveIntel(intel);
+  await saveIntel(intel);
   res.json({ success: true, count: intel.length });
 });
 
-app.delete('/intel', (req, res) => {
-  saveIntel([]);
+app.delete('/intel', async (req, res) => {
+  await saveIntel([]);
   res.json({ success: true });
 });
 
