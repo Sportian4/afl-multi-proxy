@@ -160,8 +160,8 @@ app.post('/analyse', async (req, res) => {
 });
 
 // Shared intel — stored in JSONBin.io (persists forever, survives restarts)
-const JSONBIN_ID = '69f304e836566621a80b3273';
-const JSONBIN_KEY = '$2a$10$hlpuCiJOHsN.zbBnf7JioOqF0gKTx599Dmk4eJuJ2D.Bgh9Ahi8Z2';
+const JSONBIN_ID = process.env.JSONBIN_ID || '69f304e836566621a80b3273';
+const JSONBIN_KEY = process.env.JSONBIN_KEY || '$2a$10$hlpuCiJOHsN.zbBnf7JioOqF0gKTx599Dmk4eJuJ2D.Bgh9Ahi8Z2';
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
 async function loadIntel() {
