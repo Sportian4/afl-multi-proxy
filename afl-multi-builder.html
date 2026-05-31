@@ -416,6 +416,7 @@ textarea{resize:vertical;padding:10px 13px;}
     <div class="nav-tab" id="tab-tracker" onclick="switchTab('tracker')">📊 Tracker</div>
     <div class="nav-tab" id="tab-insights" onclick="switchTab('insights')">🧠 Learn</div>
     <div class="nav-tab" id="tab-scanner" onclick="switchTab('scanner')">📸 Scan</div>
+    <div class="nav-tab" id="tab-intel" onclick="switchTab('intel')">📋 Intel</div>
   </div>
 </div>
 
@@ -456,6 +457,12 @@ let riskLevel='balanced',lineBet='none',lineValue='',lineOdds='',context='';
 let result=null,resultTab='recommended';
 let tracker=JSON.parse(localStorage.getItem('afl_tracker')||'[]');
 let insights=null;
+let intelData=[]; // loaded from server — shared across all users
+let statsSearch='';
+let statsResults=[];
+let statsSearching=false;
+let statsError='';
+let savedPlayerStats=JSON.parse(localStorage.getItem('afl_player_stats')||'[]');
 let namedTeams='';
 let manualLegs=[];
 let showManualOdds=false;
@@ -472,7 +479,7 @@ function setApiRemaining(val){
 
 function switchTab(tab){
   activeTab=tab;
-  ['matches','tracker','insights','scanner'].forEach(t=>{
+  ['matches','tracker','insights','stats','scanner'].forEach(t=>{
     const el=document.getElementById(`tab-${t}`);
     if(el) el.classList.toggle('active',t===tab);
   });
@@ -480,6 +487,8 @@ function switchTab(tab){
   else if(tab==='tracker') renderTracker();
   else if(tab==='insights') renderInsightsTab();
   else if(tab==='scanner') renderScanner();
+  else if(tab==='intel') renderIntel();
+  else if(tab==='stats') renderStatsSearch();
 }
 
 function render(){
@@ -642,15 +651,16 @@ async function fetchMarkets(){
       for(const bm of data.bookmakers)
         for(const mkt of bm.markets)
           for(const out of mkt.outcomes){
-            // Standard over/under props
-            if(out.point!==undefined&&out.name==='Over')
-              parsed.push({bookmaker:bm.title,bookmakerKey:bm.key,player:out.description||out.name,stat:mkt.key.replace('player_',''),line:Math.ceil(out.point),odds:out.price});
-            // Goal scorer markets (anytime/first) - these have no point, just a player name and price
-            if(mkt.key.includes('goal_scor')&&out.price&&!out.point)
+            if(mkt.key==='player_disposals'&&out.point!==undefined&&out.name==='Over'){
+              // Standard disposal over/under
+              parsed.push({bookmaker:bm.title,bookmakerKey:bm.key,player:out.description||out.name,stat:'disposals',line:Math.ceil(out.point),odds:out.price});
+            } else if(mkt.key==='player_goal_scorer_anytime'){
+              // Anytime goal scorer - player name is in out.name, price to score 1+ goals
               parsed.push({bookmaker:bm.title,bookmakerKey:bm.key,player:out.name,stat:'goals',line:1,odds:out.price});
+            }
           }
     }
-    markets=parsed.filter(m=>m.odds<25);
+    markets=parsed.filter(m=>m.odds&&m.odds<20);
     if(loading) loading.style.display='none';
     renderMarketsBadge();
     if(markets.length>0) fetchPlayerStats(markets.map(m=>m.player));
@@ -782,6 +792,7 @@ function renderSetup(){
       <textarea rows="3" placeholder="Key injuries, intel, anything relevant..." oninput="context=this.value">${context}</textarea>
     </div>
 
+    <div id="setupIntelStatus"></div>
     <div id="aiError" style="color:var(--red);font-size:13px;margin-bottom:12px;display:none"></div>
     <button class="build-btn" id="buildBtn" onclick="runAnalysis()">⚡ BUILD MY ${numLegs}-LEG MULTI</button>
     <div class="disclaimer">Please gamble responsibly · 1800 858 858</div>
@@ -949,7 +960,12 @@ function buildPrompt(){
   const marketList=hasMarkets?filteredMarkets.map(m=>`${m.player} | ${m.stat} | ${m.line}+ | $${m.odds} | ${m.bookmaker}`).join('\n'):'';
   const lineBetInstruction=lineBet==='none'?'Do not include a match line bet.':lineBet==='ai'?`Decide if a match line bet adds value. If confident, include it as one of the ${numLegs} legs.`:lineBet==='home'?`Include a match line leg backing ${home}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`:`Include a match line leg backing ${away}${lineValue?` -${lineValue} pts`:''}${lineOdds?` at $${lineOdds}`:''}.`;
 
-  const statsLines=playerStats.map(p=>{
+  // Merge live match stats with saved player stats from Stats tab
+  const allPlayerStats=[...playerStats];
+  for(const sp of savedPlayerStats){
+    if(!allPlayerStats.some(p=>p.name===sp.name)) allPlayerStats.push(sp);
+  }
+  const statsLines=allPlayerStats.map(p=>{
     const s=p.season2026||{};const parts=[p.name];
     if(s.avgDisposals) parts.push(`avg ${s.avgDisposals} disp`);
     if(s.avgGoals!=null) parts.push(`${s.avgGoals} goals/gm`);
@@ -964,14 +980,14 @@ function buildPrompt(){
   const alerts=getWeatherAlerts();
   const weatherSection=weather?'\nWEATHER: '+weather.temp+'C, wind '+weather.wind+'km/h, rain '+(weather.rainMm>0?weather.rainMm+'mm':'none')+'\n'+alerts.map(a=>a.msg).join('\n')+(weather.wind>40?'\nDO NOT suggest any goals legs.':'')+'\n':'';
   const insightsSection=insights&&insights.rules&&insights.rules.length>0?'\nPERSONAL INTELLIGENCE:\n'+insights.rules.join('\n')+'\n':'';
+  // Inject saved round intel into every prompt
+  const intelSection=intelData.length>0?'\nROUND INTEL (use this to inform goals, disposals, team lines and form):\n'+intelData.map(d=>d.label+': '+d.summary).join('\n\n')+'\n':'';
 
   // Only use stats that have live market data when markets are available
   const availableStats=markets.length>0?selectedStats.filter(s=>filteredMarkets.some(m=>m.stat===s)):selectedStats;
   const aiOnlyStats=selectedStats.filter(s=>!availableStats.includes(s));
   // Build stat type instructions
   // Confirmed playing players from live odds markets - these are 100% named and playing
-  // Group by team using the match info we know
-  const home=selectedGame.home_team, away=selectedGame.away_team;
   const confirmedPlayers=[...new Set(markets.map(m=>m.player))];
   const hasConfirmed=confirmedPlayers.length>0;
   
@@ -1007,7 +1023,7 @@ function buildPrompt(){
     ? '\nNAMED PLAYERS FOR THIS MATCH (only suggest players from these lists):\n'+namedTeams.trim()+'\nCRITICAL: Do not suggest any player not in the named teams above.\n'
     : '\nNamed teams not provided — use your best 2026 AFL knowledge but only suggest players currently on AFL lists.\n';
 
-  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing today:\n'+confirmedPlayers.join(', ')+'\n\n'+playerTeamNote+'\n\nCRITICAL RULES:\n1. You may ONLY suggest players from the CONFIRMED PLAYING list above.\n2. Every player must be assigned their CURRENT 2026 team ('+home+' or '+away+' only).\n3. Do not use historical team data — players change teams. Verify each player is currently at the team you assign them.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+(context?'Context: '+context+'\n':'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
+  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing today:\n'+confirmedPlayers.join(', ')+'\n\n'+playerTeamNote+'\n\nCRITICAL RULES:\n1. You may ONLY suggest players from the CONFIRMED PLAYING list above.\n2. Every player must be assigned their CURRENT 2026 team ('+home+' or '+away+' only).\n3. Do not use historical team data — players change teams. Verify each player is currently at the team you assign them.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+intelSection+(context?'Context: '+context+'\n':'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
 }
 
 
@@ -1018,6 +1034,7 @@ async function runAnalysis(){
   errEl.style.display='none';
   btn.innerHTML=`<div class="build-btn-inner"><div class="spinner-sm-inv"></div> BUILDING YOUR ${numLegs}-LEG MULTI...</div>`;
   await fetchInsights();
+  await fetchIntel(); // refresh shared intel
   try{
     const text=await callClaude(buildPrompt(),1500);
     result=JSON.parse(text.replace(/```json|```/g,'').trim());
@@ -1263,6 +1280,369 @@ function renderManualLegs(){
     </div>`).join('');
 }
 
+// ── STATS SEARCH ─────────────────────────────────────
+function renderStatsSearch(){
+  document.getElementById('main').innerHTML=buildStatsHTML();
+}
+
+function buildStatsHTML(){
+  const savedCards=savedPlayerStats.length>0?`
+    <div style="margin-bottom:20px">
+      <div class="sl" style="margin-bottom:10px">📌 SAVED PLAYERS</div>
+      ${savedPlayerStats.map((p,i)=>playerStatCard(p,i)).join('')}
+    </div>`:'';
+
+  const resultCards=statsResults.map((p,i)=>playerStatCard(p,-1)).join('');
+
+  return `<div class="fu">
+    <div class="section-title bb">Player Stats</div>
+    <div class="section-sub">Search 2026 season stats to inform your multi</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input type="text" id="statsInput" placeholder="Search player name..." value="${statsSearch}"
+        style="flex:1;font-size:14px;padding:11px 14px"
+        onkeydown="if(event.key==='Enter')searchPlayerStats()"
+        oninput="statsSearch=this.value">
+      <button onclick="searchPlayerStats()" style="background:var(--gold);border:none;border-radius:10px;padding:11px 18px;font-family:var(--font-display);font-size:16px;color:#0a0f1a;cursor:pointer;font-weight:700;white-space:nowrap">
+        ${statsSearching?'...':'SEARCH'}
+      </button>
+    </div>
+
+    ${statsError?`<div class="error-box">${statsError}</div>`:''}
+    ${statsSearching?`<div class="status-row"><div class="spinner-sm"></div> Searching...</div>`:''}
+    ${resultCards}
+    ${savedCards}
+
+    <div class="info-box" style="margin-top:8px">
+      Search any AFL player to see their 2026 season stats. Tap 📌 to save players for quick reference when building multis.
+    </div>
+  </div>`;
+}
+
+function playerStatCard(p, savedIdx){
+  if(p.error) return `<div class="insights-card"><div style="color:var(--muted);font-size:13px">❌ ${p.name} — not found</div></div>`;
+  const s=p.season2026||{};
+
+  // Form sparkline
+  let sparkline='';
+  if(s.recentDisposals&&s.recentDisposals.length>0){
+    const max=Math.max(...s.recentDisposals,1);
+    const bars=s.recentDisposals.map(v=>{
+      const h=Math.max(2,Math.round((v/max)*24));
+      return `<div style="width:8px;height:${h}px;background:${v>=20?'var(--green)':'var(--red)'};border-radius:2px 2px 0 0"></div>`;
+    }).join('');
+    sparkline=`<div style="margin-top:8px">
+      <div style="font-size:9px;color:var(--dim);margin-bottom:3px;letter-spacing:1px">LAST 5 GAMES</div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:28px">${bars}</div>
+    </div>`;
+  }
+
+  // Hit rates
+  let hitRateHTML='';
+  if(s.hitRates){
+    hitRateHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      ${Object.entries(s.hitRates).map(([k,v])=>`
+        <div style="background:var(--bg3);border-radius:8px;padding:5px 10px;text-align:center">
+          <div style="font-size:9px;color:var(--dim);letter-spacing:1px">${k.replace('plus','+')} DISP</div>
+          <div style="font-family:var(--font-display);font-size:16px;color:${v.season>=60?'var(--green)':v.season>=45?'var(--gold)':'var(--red)'}">${v.season}%</div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  const isSaved=savedPlayerStats.some(sp=>sp.name===p.name);
+
+  return `<div class="insights-card" style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="bb" style="font-size:20px;color:#fff">${p.name}</div>
+      <button onclick="${isSaved?`removeFromSaved('${p.name}')`:`savePlayer(${JSON.stringify(JSON.stringify(p))})`}"
+        style="background:${isSaved?'var(--red-dim)':'var(--gold-dim)'};border:1px solid ${isSaved?'rgba(224,85,85,0.3)':'rgba(232,160,32,0.3)'};border-radius:8px;padding:5px 10px;font-size:12px;color:${isSaved?'var(--red)':'var(--gold)'};cursor:pointer">
+        ${isSaved?'✕ Remove':'📌 Save'}
+      </button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      ${s.avgDisposals?`<div class="venue-mod pos">Disp avg: ${s.avgDisposals}</div>`:''}
+      ${s.avgGoals!=null?`<div class="venue-mod ${s.avgGoals>=0.5?'pos':'neu'}">Goals avg: ${s.avgGoals}/gm</div>`:''}
+      ${s.avgTackles?`<div class="venue-mod neu">Tackles avg: ${s.avgTackles}</div>`:''}
+      ${s.last5Avg?`<div class="venue-mod neu">L5 avg: ${s.last5Avg}</div>`:''}
+      ${s.games?`<div class="venue-mod neu">${s.games} games</div>`:''}
+    </div>
+    ${sparkline}
+    ${hitRateHTML}
+  </div>`;
+}
+
+async function searchPlayerStats(){
+  if(!statsSearch.trim()) return;
+  statsSearching=true; statsError=''; statsResults=[];
+  renderStatsSearch();
+  try {
+    const res=await fetch(`${PROXY}/stats`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({players:[statsSearch.trim()]})
+    });
+    const data=await res.json();
+    if(data.players&&data.players.length>0){
+      statsResults=data.players;
+    } else {
+      statsError='No stats found for "'+statsSearch+'" — try a different spelling';
+    }
+  } catch(e){
+    statsError='Search failed — try again';
+  }
+  statsSearching=false;
+  renderStatsSearch();
+}
+
+function savePlayer(jsonStr){
+  const p=JSON.parse(jsonStr);
+  if(!savedPlayerStats.some(sp=>sp.name===p.name)){
+    savedPlayerStats.unshift(p);
+    localStorage.setItem('afl_player_stats',JSON.stringify(savedPlayerStats));
+  }
+  statsResults=[];
+  statsSearch='';
+  renderStatsSearch();
+}
+
+function removeFromSaved(name){
+  savedPlayerStats=savedPlayerStats.filter(p=>p.name!==name);
+  localStorage.setItem('afl_player_stats',JSON.stringify(savedPlayerStats));
+  renderStatsSearch();
+}
+
+// ── INTEL ────────────────────────────────────────────
+function renderIntelStatus(){
+  // Show intel status on home and setup screens
+  const homeBar = document.getElementById('intelStatusBar');
+  const setupBar = document.getElementById('setupIntelStatus');
+  
+  if(intelData.length===0){
+    const msg = '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px"><span>📋</span> No round intel loaded — tap <strong style="color:var(--muted)">Intel</strong> tab to upload stats</div>';
+    if(homeBar) homeBar.innerHTML=msg;
+    if(setupBar) setupBar.innerHTML=msg;
+  } else {
+    const latest=intelData[0];
+    const msg = `<div style="background:var(--green-dim);border:1px solid rgba(46,204,138,0.2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--green);display:flex;align-items:center;justify-content:space-between">
+      <span>✅ <strong>${intelData.length} intel ${intelData.length===1?'entry':'entries'} loaded</strong> · Latest: ${latest.label}</span>
+      <span style="color:var(--dim);font-size:10px">${new Date(latest.date).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</span>
+    </div>`;
+    if(homeBar) homeBar.innerHTML=msg;
+    if(setupBar) setupBar.innerHTML=msg;
+  }
+}
+
+async function fetchIntel(){
+  try{
+    const res=await fetch(`${PROXY}/intel`);
+    intelData=await res.json();
+    if(!Array.isArray(intelData)) intelData=[];
+  }catch(e){ intelData=[]; }
+  renderIntelStatus();
+}
+
+async function pushIntel(entry){
+  try{
+    await fetch(`${PROXY}/intel`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({entry})
+    });
+    await fetchIntel();
+  }catch(e){ console.log('Intel push failed',e); }
+}
+
+async function deleteIntelServer(idx){
+  try{
+    await fetch(`${PROXY}/intel/${idx}`,{method:'DELETE'});
+    await fetchIntel();
+  }catch(e){}
+}
+
+async function clearAllIntelServer(){
+  try{
+    await fetch(`${PROXY}/intel`,{method:'DELETE'});
+    await fetchIntel();
+  }catch(e){}
+}
+
+// ── INTEL ────────────────────────────────────────────
+async function renderIntel(){
+  document.getElementById('main').innerHTML='<div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 12px"></div><div style="color:var(--muted);font-size:13px">Loading intel...</div></div>';
+  await fetchIntel();
+  document.getElementById('main').innerHTML=buildIntelHTML();
+}
+
+function buildIntelHTML(){
+  const entries=intelData.map((entry,i)=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-family:var(--font-display);font-size:16px;color:#fff">${entry.label}</div>
+        <button onclick="deleteIntel(${i})" style="background:none;border:none;color:var(--dim);font-size:11px;cursor:pointer">🗑️ Delete</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">${entry.summary||'No summary'}</div>
+    </div>`).join('');
+
+  return `<div class="fu">
+    <div class="section-title bb">Round Intel</div>
+    <div class="section-sub">Shared intel — upload once and all users get it automatically</div>
+    ${intelData.length>0
+      ? `<div style="background:var(--green-dim);border:1px solid rgba(46,204,138,0.2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--green)">
+          ✅ <strong>${intelData.length} ${intelData.length===1?'entry':'entries'} currently active</strong> — Claude is using this data for all multi builds
+        </div>`
+      : `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--dim)">
+          📋 No intel uploaded yet — add stats below
+        </div>`
+    }
+
+    <!-- CSV Upload -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div class="sl" style="margin-bottom:6px">📄 Upload CSV stats file</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+        Download from <strong style="color:var(--text)">footywire.com</strong> → Player Stats → Export CSV<br>
+        Or <strong style="color:var(--text)">afl.com.au/stats</strong> → Export to spreadsheet
+      </div>
+      <div class="scan-area" onclick="document.getElementById('intelCsvInput').click()" style="padding:16px">
+        <div style="font-size:28px;margin-bottom:6px">📄</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">Tap to upload CSV file</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Footywire, AFL.com.au or any stats CSV</div>
+        <input type="file" id="intelCsvInput" accept=".csv,.txt" style="display:none" onchange="loadIntelCSV(this)">
+      </div>
+      <div id="intelCsvResult"></div>
+    </div>
+
+    <!-- Image Upload -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div class="sl" style="margin-bottom:6px">📸 Upload stats screenshot</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">AFL app, Champion Data or any stats screenshot</div>
+      <div class="scan-area" onclick="document.getElementById('intelImageInput').click()" style="padding:16px">
+        <div style="font-size:28px;margin-bottom:6px">📊</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">Tap to upload image</div>
+        <input type="file" id="intelImageInput" accept="image/*" style="display:none" onchange="scanIntelImage(this)">
+      </div>
+      <div id="intelImageResult"></div>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div class="sl" style="margin-bottom:8px">📝 Paste stats or notes manually</div>
+      <textarea id="intelText" rows="5" placeholder="e.g. Round 7 stats: Serong 34 disposals, 8 clearances. Hawkins 3 goals. Eagles beat Dockers by 22pts. Mitchell injured..." style="margin-bottom:8px"></textarea>
+      <input type="text" id="intelLabel" placeholder="Label (e.g. Round 7 stats)" style="margin-bottom:8px;font-size:13px;padding:9px 12px">
+      <button onclick="saveIntelText()" style="width:100%;padding:11px;background:var(--gold);border:none;border-radius:10px;color:#0a0f1a;font-family:var(--font-display);font-size:16px;font-weight:700;cursor:pointer;letter-spacing:1px">💾 SAVE INTEL</button>
+    </div>
+
+    ${intelData.length>0?`
+    <div class="sl" style="margin-bottom:10px">Saved intel (${intelData.length} entries — used in every multi build)</div>
+    ${entries}
+    <button onclick="clearAllIntel()" style="width:100%;padding:10px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:12px;cursor:pointer;margin-top:4px">🗑️ Clear all intel</button>
+    `:'<div class="empty" style="padding:24px"><div class="empty-icon" style="font-size:32px">📋</div><div style="color:var(--dim);font-size:13px">No intel saved yet — upload stats above</div></div>'}
+
+    <div class="info-box" style="margin-top:16px">
+      <strong>How it works:</strong> Every time you build a multi, Claude automatically uses all saved intel to inform its recommendations — goals form, disposal trends, injury news, team line patterns. Add new intel each round for best results.
+    </div>
+  </div>`;
+}
+
+async function scanIntelImage(input){
+  const file=input.files[0];
+  if(!file) return;
+  const resultEl=document.getElementById('intelImageResult');
+  resultEl.innerHTML=`<div class="status-row" style="margin-top:8px"><div class="spinner-sm"></div> Reading stats...</div>`;
+  try{
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    const response=await fetch(`${PROXY}/analyse`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+          {type:'text',text:`Extract all AFL stats from this image. Include player names, disposals, goals, marks, tackles, clearances, team scores and any injury or selection notes. Format as a clear text summary that can be used to inform betting analysis. Be thorough and include every stat visible.`}
+        ]}]})
+    });
+    const data=await response.json();
+    const summary=(data.content||[]).map(b=>b.text||'').join('');
+    const label='Stats upload '+new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+    intelData.unshift({label,summary,date:new Date().toISOString(),type:'image'});
+    localStorage.setItem('afl_intel',JSON.stringify(intelData));
+    resultEl.innerHTML=`<div class="success-box" style="margin-top:8px">✅ Stats extracted and saved!<br><br><em style="font-size:11px;color:var(--muted)">${summary.slice(0,200)}...</em></div>`;
+    renderIntel();
+  }catch(e){
+    resultEl.innerHTML=`<div class="error-box" style="margin-top:8px">⚠️ Couldn't read image — try a clearer photo.</div>`;
+  }
+}
+
+async function saveIntelText(){
+  const text=document.getElementById('intelText')?.value?.trim();
+  const label=document.getElementById('intelLabel')?.value?.trim()||'Manual intel '+new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+  if(!text){alert('Please enter some stats or notes first.');return;}
+  const btn=document.querySelector('[onclick="saveIntelText()"]');
+  if(btn){btn.textContent='Saving...';btn.disabled=true;}
+  await pushIntel({label,summary:text,type:'text'});
+  renderIntel();
+  if(btn){btn.textContent='💾 SAVE INTEL';btn.disabled=false;}
+}
+
+async function loadIntelCSV(input){
+  const file=input.files[0];
+  if(!file) return;
+  const resultEl=document.getElementById('intelCsvResult');
+  resultEl.innerHTML=`<div class="status-row" style="margin-top:8px"><div class="spinner-sm"></div> Reading CSV...</div>`;
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      const text=e.target.result;
+      const lines=text.split('\n').filter(l=>l.trim());
+      if(lines.length<2){resultEl.innerHTML=`<div class="error-box" style="margin-top:8px">⚠️ CSV appears empty</div>`;return;}
+      
+      const headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
+      const rows=lines.slice(1).map(line=>{
+        // Handle quoted CSV values
+        const vals=[];
+        let current='';let inQuote=false;
+        for(const ch of line){
+          if(ch==='"') inQuote=!inQuote;
+          else if(ch===','&&!inQuote){vals.push(current.trim());current='';}
+          else current+=ch;
+        }
+        vals.push(current.trim());
+        return vals;
+      });
+
+      // Build summary from CSV data
+      const playerCol=headers.findIndex(h=>h.includes('player')||h.includes('name'));
+      const dispCol=headers.findIndex(h=>h.includes('disposal'));
+      const goalCol=headers.findIndex(h=>h.includes('goal')&&!h.includes('assist'));
+      const markCol=headers.findIndex(h=>h.includes('mark'));
+      const tackleCol=headers.findIndex(h=>h.includes('tackle'));
+      const clearCol=headers.findIndex(h=>h.includes('clear'));
+      const teamCol=headers.findIndex(h=>h.includes('team'));
+
+      const playerStats=rows.slice(0,50).map(row=>{
+        const parts=[];
+        if(playerCol>=0&&row[playerCol]) parts.push(row[playerCol].replace(/"/g,''));
+        if(teamCol>=0&&row[teamCol]) parts.push('('+row[teamCol].replace(/"/g,'')+')');
+        if(dispCol>=0&&row[dispCol]) parts.push(row[dispCol]+' disp');
+        if(goalCol>=0&&row[goalCol]&&parseFloat(row[goalCol])>0) parts.push(row[goalCol]+' goals');
+        if(markCol>=0&&row[markCol]) parts.push(row[markCol]+' marks');
+        if(tackleCol>=0&&row[tackleCol]) parts.push(row[tackleCol]+' tackles');
+        if(clearCol>=0&&row[clearCol]) parts.push(row[clearCol]+' clear');
+        return parts.join(' | ');
+      }).filter(s=>s.length>5).join('\n');
+
+      const label=file.name.replace('.csv','').replace(/_/g,' ')+' ('+new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short'})+')';
+      const summary='CSV STATS DATA ('+rows.length+' players):\n'+playerStats;
+      
+      await pushIntel({label,summary,type:'csv',rowCount:rows.length});
+      resultEl.innerHTML=`<div class="success-box" style="margin-top:8px">✅ ${rows.length} players loaded — shared with all users!</div>`;
+      renderIntel();
+    }catch(err){
+      resultEl.innerHTML=`<div class="error-box" style="margin-top:8px">⚠️ Couldn't parse CSV: ${err.message}</div>`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function deleteIntel(idx){await deleteIntelServer(idx);renderIntel();}
+async function clearAllIntel(){if(confirm('Clear all saved intel? This affects all users.')){await clearAllIntelServer();renderIntel();}}
+
 // ── HELPERS ───────────────────────────────────────────
 function setNumLegs(n){numLegs=n;redrawSetup();}
 function toggleStat(id){selectedStats=selectedStats.includes(id)?selectedStats.filter(s=>s!==id):[...selectedStats,id];redrawSetup();}
@@ -1292,6 +1672,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
 
 render();
 if(!gamesLoaded) fetchGames();
+fetchIntel(); // load shared intel on startup
 </script>
 </body>
 </html>
