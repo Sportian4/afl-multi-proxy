@@ -276,3 +276,130 @@ app.delete('/intel', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Proxy running on port ${PORT}`));
+
+// ── SQUIGGLE DATA ─────────────────────────────────────
+
+const SQUIGGLE = 'https://api.squiggle.com.au';
+const SQUIGGLE_UA = 'AFL-Multi-Builder/1.0 - aflmultibuilder@gmail.com';
+
+async function squiggleFetch(query) {
+  const r = await fetch(`${SQUIGGLE}/?${query}`, {
+    headers: { 'User-Agent': SQUIGGLE_UA }
+  });
+  return await r.json();
+}
+
+// Get current ladder + last 5 form for all teams
+app.get('/ladder', async (req, res) => {
+  try {
+    const [standings, games] = await Promise.all([
+      squiggleFetch('q=standings;year=2026'),
+      squiggleFetch('q=games;year=2026;complete=100'),
+    ]);
+
+    // Build last 5 form for each team
+    const allGames = games.games || [];
+    const teamForm = {};
+
+    for (const game of allGames.sort((a, b) => b.round - a.round)) {
+      const addForm = (teamId, won) => {
+        if (!teamForm[teamId]) teamForm[teamId] = [];
+        if (teamForm[teamId].length < 5) teamForm[teamId].push(won ? 'W' : 'L');
+      };
+      if (game.winner) {
+        addForm(game.hteam, game.winner === game.hteam);
+        addForm(game.ateam, game.winner === game.ateam);
+      }
+    }
+
+    const ladder = (standings.standings || []).map(t => ({
+      pos: t.rank,
+      team: t.name,
+      teamId: t.id,
+      wins: t.wins,
+      losses: t.losses,
+      pts: t.pts,
+      pct: t.percentage ? t.percentage.toFixed(1) : '0.0',
+      form: (teamForm[t.id] || []).join(''),
+    }));
+
+    res.json({ ladder, round: allGames[0]?.round || 0 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get predictions/tips for upcoming games
+app.get('/tips', async (req, res) => {
+  try {
+    // Get upcoming games
+    const gamesData = await squiggleFetch('q=games;year=2026;complete=!100');
+    const upcoming = (gamesData.games || []).slice(0, 10);
+
+    // Get aggregate tips for these games
+    const tips = {};
+    for (const game of upcoming.slice(0, 5)) {
+      try {
+        const tipData = await squiggleFetch(`q=tips;game=${game.id};source=8`);
+        const tip = (tipData.tips || [])[0];
+        if (tip) {
+          tips[game.id] = {
+            tip: tip.tip,
+            confidence: tip.confidence,
+            margin: tip.margin,
+            hteam: game.hteamname,
+            ateam: game.ateamname,
+          };
+        }
+      } catch(e) {}
+    }
+
+    res.json({ games: upcoming, tips });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get H2H history between two teams
+app.get('/h2h/:home/:away', async (req, res) => {
+  try {
+    const homeTeam = decodeURIComponent(req.params.home);
+    const awayTeam = decodeURIComponent(req.params.away);
+
+    // Get last 3 years of games
+    const [g24, g25, g26] = await Promise.all([
+      squiggleFetch('q=games;year=2024;complete=100'),
+      squiggleFetch('q=games;year=2025;complete=100'),
+      squiggleFetch('q=games;year=2026;complete=100'),
+    ]);
+
+    const allGames = [
+      ...(g24.games || []),
+      ...(g25.games || []),
+      ...(g26.games || []),
+    ];
+
+    // Find H2H games
+    const h2h = allGames.filter(g => {
+      const names = [g.hteamname?.toLowerCase(), g.ateamname?.toLowerCase()];
+      return names.some(n => n?.includes(homeTeam.split(' ').pop().toLowerCase())) &&
+             names.some(n => n?.includes(awayTeam.split(' ').pop().toLowerCase()));
+    }).slice(-5);
+
+    const results = h2h.map(g => ({
+      year: g.year,
+      round: g.round,
+      venue: g.venue,
+      hteam: g.hteamname,
+      ateam: g.ateamname,
+      hscore: g.hscore,
+      ascore: g.ascore,
+      winner: g.winnerteamname,
+      margin: Math.abs((g.hscore || 0) - (g.ascore || 0)),
+    }));
+
+    res.json({ h2h: results, count: results.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
