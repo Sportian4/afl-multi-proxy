@@ -10,389 +10,396 @@
 <meta name="apple-mobile-web-app-title" content="AFL Multi">
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg:       #13151a;
-  --bg2:      #1c1f27;
-  --bg3:      #242830;
-  --bg4:      #2d3240;
-  --border:   #2e3340;
-  --border2:  #252a36;
-  --gold:     #e8a020;
-  --gold-dim: rgba(232,160,32,0.1);
-  --green:    #2ecc8a;
-  --green-dim:rgba(46,204,138,0.1);
-  --red:      #e05555;
-  --red-dim:  rgba(224,85,85,0.1);
-  --blue:     #4a90d9;
-  --blue-dim: rgba(74,144,217,0.1);
-  --text:     #dde3ee;
-  --muted:    #7a8aa8;
-  --dim:      #4a5570;
-  --dimmer:   #2a3048;
-  --font-display: 'Bebas Neue', sans-serif;
-  --font-body:    'DM Sans', sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-html{background:var(--bg);}
-body{
-  background:var(--bg);
-  color:var(--text);
-  font-family:var(--font-body);
-  min-height:100vh;
-  position:relative;
-}
-#header,#main{position:relative;z-index:1;}
 
-/* FONTS */
-.bb{font-family:var(--font-display);letter-spacing:0.5px;}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap');
+
+:root {
+  --ink:       #0d0d0d;
+  --ink2:      #1a1a1a;
+  --ink3:      #2a2a2a;
+  --paper:     #f5f0e8;
+  --paper2:    #ede8de;
+  --paper3:    #e4ddd0;
+  --paper4:    #d8d0c0;
+  --gold:      #c8850a;
+  --gold-lt:   #f0a820;
+  --gold-bg:   rgba(200,133,10,0.08);
+  --gold-bdr:  rgba(200,133,10,0.25);
+  --green:     #1a6b3a;
+  --green-bg:  rgba(26,107,58,0.08);
+  --green-bdr: rgba(26,107,58,0.2);
+  --red:       #9b1c1c;
+  --red-bg:    rgba(155,28,28,0.08);
+  --red-bdr:   rgba(155,28,28,0.2);
+  --blue:      #1a3a6b;
+  --blue-bg:   rgba(26,58,107,0.08);
+  --blue-bdr:  rgba(26,58,107,0.2);
+  --muted:     #6b6058;
+  --dim:       #9b9088;
+  --dimmer:    #c0b8ac;
+  --border:    #d0c8b8;
+  --border2:   #c4baa8;
+  --ff-head:   'Syne', sans-serif;
+  --ff-mono:   'DM Mono', monospace;
+  --ff-serif:  'Instrument Serif', serif;
+  --ff-body:   'Syne', sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html{background:var(--paper);}
+body{background:var(--paper);color:var(--ink);font-family:var(--ff-body);min-height:100vh;font-size:14px;}
 
 /* HEADER */
 #header{
-  background:var(--bg2);
-  border-bottom:1px solid var(--border);
-  padding:12px 16px 0;
+  background:var(--ink);
+  padding:14px 18px 0;
   position:sticky;top:0;z-index:100;
 }
-.header-top{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.header-top{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:14px;margin-bottom:14px;}
 .logo-wrap{display:flex;align-items:center;gap:10px;flex:1;}
 .logo-icon{
-  width:38px;height:38px;border-radius:10px;
-  background:linear-gradient(135deg,#f0a500,#c07800);
+  width:36px;height:36px;border-radius:6px;
+  background:var(--gold-lt);
   display:flex;align-items:center;justify-content:center;
-  font-size:20px;flex-shrink:0;
-  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+  font-size:18px;flex-shrink:0;
 }
-.logo-text{}
-.logo-title{font-family:var(--font-display);font-size:22px;color:#fff;letter-spacing:1px;line-height:1;}
-.logo-sub{font-size:9px;color:var(--muted);letter-spacing:2px;margin-top:1px;text-transform:uppercase;}
+.logo-title{font-family:var(--ff-head);font-size:20px;color:#fff;font-weight:800;letter-spacing:-0.5px;line-height:1;}
+.logo-sub{font-family:var(--ff-mono);font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:2px;margin-top:2px;text-transform:uppercase;}
 .api-pill{
-  background:var(--bg3);border:1px solid var(--border);
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.12);
   border-radius:20px;padding:4px 10px;
   display:flex;align-items:center;gap:6px;
-  font-size:11px;color:var(--muted);
 }
-.api-count{font-family:var(--font-display);font-size:16px;color:var(--green);}
-.api-count.low{color:var(--red);}
+.api-label{font-family:var(--ff-mono);font-size:8px;color:rgba(255,255,255,0.4);letter-spacing:1.5px;}
+.api-count{font-family:var(--ff-mono);font-size:14px;color:#6bffb8;font-weight:500;}
+.api-count.low{color:#ff8888;}
 
 /* NAV */
-.nav-tabs{max-width:640px;margin:0 auto;display:flex;}
+.nav-tabs{max-width:640px;margin:0 auto;display:flex;border-top:1px solid rgba(255,255,255,0.08);}
 .nav-tab{
   flex:1;text-align:center;padding:10px 4px;
-  font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
-  color:var(--dim);border-bottom:2px solid transparent;
+  font-family:var(--ff-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  color:rgba(255,255,255,0.35);border-bottom:2px solid transparent;
   cursor:pointer;transition:all 0.2s;
 }
-.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
-.nav-tab:hover:not(.active){color:var(--muted);}
+.nav-tab.active{color:var(--gold-lt);border-bottom-color:var(--gold-lt);}
+.nav-tab:hover:not(.active){color:rgba(255,255,255,0.6);}
 
 /* MAIN */
-#main{max-width:640px;margin:0 auto;padding:20px 16px 100px;}
+#main{max-width:640px;margin:0 auto;padding:24px 18px 100px;}
 
 /* SECTION HEADERS */
-.section-title{
-  font-family:var(--font-display);font-size:28px;color:#fff;
-  letter-spacing:1px;margin-bottom:4px;
-}
-.section-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.section-title{font-family:var(--ff-head);font-size:32px;color:var(--ink);font-weight:800;letter-spacing:-1px;line-height:1;margin-bottom:4px;}
+.section-sub{font-family:var(--ff-mono);font-size:11px;color:var(--dim);letter-spacing:0.5px;margin-bottom:20px;}
 
 /* SPINNERS */
-.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
-.spinner-sm{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;vertical-align:middle;}
-.spinner-sm-inv{width:14px;height:14px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle;}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+.spinner-sm{width:12px;height:12px;border:1.5px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;vertical-align:middle;}
+.spinner-sm-inv{width:12px;height:12px;border:1.5px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle;}
 @keyframes spin{to{transform:rotate(360deg);}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
-.fu{animation:fadeUp 0.3s ease forwards;}
-@keyframes pulse{0%,100%{opacity:0.9;}50%{opacity:0.4;}}
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 1.5s ease infinite;margin-right:4px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.fu{animation:fadeUp 0.25s ease forwards;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 1.8s ease infinite;margin-right:5px;}
 
 /* GAME CARDS */
 .game-card{
-  background:var(--bg2);
+  background:var(--paper2);
   border:1px solid var(--border);
-  border-radius:14px;
-  padding:16px;
+  border-radius:12px;
+  padding:18px;
   margin-bottom:10px;
   cursor:pointer;
-  transition:all 0.2s;
+  transition:all 0.18s;
   position:relative;
   overflow:hidden;
 }
 .game-card::before{
   content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
-  background:var(--border);transition:background 0.2s;
+  background:var(--border2);transition:background 0.2s;
+  border-radius:12px 0 0 12px;
 }
-.game-card:hover{border-color:var(--gold);box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+.game-card:hover{border-color:var(--gold);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,0.08);}
 .game-card:hover::before{background:var(--gold);}
 .game-card.has-odds::before{background:var(--green);}
-.game-time{font-size:10px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
-.game-teams{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.game-time{font-family:var(--ff-mono);font-size:9px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;}
+.game-teams{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .game-team-names{flex:1;}
-.game-home{font-family:var(--font-display);font-size:22px;color:#fff;letter-spacing:0.5px;}
-.game-vs{font-size:11px;color:var(--dim);margin:1px 0;font-weight:500;}
-.game-away{font-family:var(--font-display);font-size:22px;color:var(--muted);letter-spacing:0.5px;}
+.game-home{font-family:var(--ff-head);font-size:20px;color:var(--ink);font-weight:700;letter-spacing:-0.5px;}
+.game-vs{font-family:var(--ff-mono);font-size:10px;color:var(--dim);margin:3px 0;letter-spacing:1px;}
+.game-away{font-family:var(--ff-head);font-size:20px;color:var(--muted);font-weight:700;letter-spacing:-0.5px;}
 .game-badge{
-  text-align:center;min-width:56px;padding:6px 8px;
-  border-radius:8px;font-size:10px;font-weight:700;letter-spacing:1px;
+  text-align:center;min-width:52px;padding:5px 8px;
+  border-radius:6px;
+  font-family:var(--ff-mono);font-size:9px;font-weight:500;letter-spacing:1px;
 }
-.game-badge.live{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,0.2);}
-.game-badge.ai{background:var(--bg3);color:var(--dim);border:1px solid var(--border);}
-.game-badge.checking{background:var(--bg3);border:1px solid var(--border);}
-.game-footer{display:flex;justify-content:space-between;align-items:center;}
-.game-venue{font-size:10px;color:var(--dim);}
-.game-cta{font-size:11px;color:var(--gold);font-weight:600;letter-spacing:0.5px;}
+.game-badge.live{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);}
+.game-badge.ai{background:var(--paper3);color:var(--dim);border:1px solid var(--border);}
+.game-badge.checking{background:var(--paper3);border:1px solid var(--border);}
+.game-footer{display:flex;justify-content:space-between;align-items:flex-end;}
+.game-venue{font-family:var(--ff-mono);font-size:9px;color:var(--dim);letter-spacing:0.5px;}
+.game-cta{font-family:var(--ff-mono);font-size:10px;color:var(--gold);font-weight:500;letter-spacing:1px;}
 
 /* FILTER ROW */
-.filter-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-.filter-info{font-size:12px;color:var(--muted);}
-.toggle-pills{display:flex;background:var(--bg3);border-radius:20px;padding:3px;gap:2px;border:1px solid var(--border);}
+.filter-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.filter-info{font-family:var(--ff-mono);font-size:10px;color:var(--muted);letter-spacing:0.5px;}
+.toggle-pills{display:flex;background:var(--paper3);border-radius:20px;padding:3px;border:1px solid var(--border);}
 .toggle-pill{
   padding:5px 14px;border-radius:16px;border:none;
-  font-size:11px;font-weight:600;letter-spacing:0.5px;
+  font-family:var(--ff-mono);font-size:10px;letter-spacing:0.5px;
   cursor:pointer;transition:all 0.2s;background:transparent;color:var(--dim);
 }
-.toggle-pill.active{background:var(--gold);color:#0a0f1a;}
+.toggle-pill.active{background:var(--ink);color:#fff;}
 
 /* BOXES */
-.error-box{background:var(--red-dim);border:1px solid rgba(255,68,68,0.3);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--red);}
-.warn-box{background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--gold);}
-.info-box{background:var(--blue-dim);border:1px solid rgba(41,121,255,0.2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#82b1ff;}
-.success-box{background:var(--green-dim);border:1px solid rgba(0,230,118,0.2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--green);}
+.error-box{background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--red);font-family:var(--ff-mono);}
+.warn-box{background:var(--gold-bg);border:1px solid var(--gold-bdr);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:var(--gold);font-family:var(--ff-mono);}
+.info-box{background:var(--blue-bg);border:1px solid var(--blue-bdr);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--blue);}
+.success-box{background:var(--green-bg);border:1px solid var(--green-bdr);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--green);}
 
-/* MATCH HEADER CARD */
+/* MATCH HEADER */
 .match-header{
-  background:var(--bg2);
-  border:1px solid var(--border);border-radius:14px;
-  padding:16px;margin-bottom:16px;
+  background:var(--ink);
+  border-radius:12px;
+  padding:20px;margin-bottom:16px;
 }
-.match-header-label{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
-.match-header-teams{font-family:var(--font-display);font-size:26px;color:#fff;letter-spacing:0.5px;line-height:1.2;}
-.match-header-vs{color:var(--gold);font-size:18px;}
-.match-header-meta{font-size:11px;color:var(--muted);margin-top:6px;}
+.match-header-label{font-family:var(--ff-mono);font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.match-header-teams{font-family:var(--ff-head);font-size:28px;color:#fff;font-weight:800;letter-spacing:-1px;line-height:1.2;}
+.match-header-vs{color:var(--gold-lt);font-size:20px;}
+.match-header-meta{font-family:var(--ff-mono);font-size:10px;color:rgba(255,255,255,0.4);margin-top:8px;letter-spacing:0.5px;}
 
 /* STATUS BADGES */
-.status-badge{border-radius:10px;padding:10px 13px;margin-bottom:10px;font-size:12px;font-weight:500;}
-.status-badge.green{background:var(--green-dim);border:1px solid rgba(0,230,118,0.2);color:var(--green);}
-.status-badge.blue{background:var(--blue-dim);border:1px solid rgba(41,121,255,0.2);color:#82b1ff;}
-.status-badge.amber{background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);color:var(--gold);}
-.badge-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;opacity:0.7;}
+.status-badge{border-radius:8px;padding:10px 13px;margin-bottom:10px;font-size:11px;}
+.status-badge.green{background:var(--green-bg);border:1px solid var(--green-bdr);color:var(--green);}
+.status-badge.blue{background:var(--blue-bg);border:1px solid var(--blue-bdr);color:var(--blue);}
+.status-badge.amber{background:var(--gold-bg);border:1px solid var(--gold-bdr);color:var(--gold);}
+.badge-label{font-family:var(--ff-mono);font-size:9px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;opacity:0.7;}
 .lineup-names{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
-.lineup-name{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:10px;padding:2px 8px;font-size:10px;color:var(--muted);}
+.lineup-name{background:var(--paper3);border:1px solid var(--border);border-radius:10px;padding:2px 8px;font-family:var(--ff-mono);font-size:9px;color:var(--muted);}
 
 /* VENUE CARD */
-.venue-card{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:14px;padding:14px;margin-bottom:14px;
-}
-.venue-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.venue-name{font-family:var(--font-display);font-size:18px;color:#fff;letter-spacing:0.5px;}
-.venue-dims{font-size:11px;color:var(--muted);}
-.venue-mods{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
-.venue-mod{padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600;}
-.venue-mod.pos{background:var(--green-dim);color:var(--green);}
-.venue-mod.neg{background:var(--red-dim);color:var(--red);}
-.venue-mod.neu{background:var(--bg3);color:var(--muted);}
-.venue-notes{font-size:11px;color:var(--muted);line-height:1.7;}
+.venue-card{background:var(--paper2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;}
+.venue-name{font-family:var(--ff-head);font-size:16px;color:var(--ink);font-weight:700;letter-spacing:-0.3px;}
+.venue-dims{font-family:var(--ff-mono);font-size:10px;color:var(--dim);margin-top:2px;}
+.venue-mods{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 8px;}
+.venue-mod{padding:3px 10px;border-radius:6px;font-family:var(--ff-mono);font-size:10px;font-weight:500;}
+.venue-mod.pos{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);}
+.venue-mod.neg{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr);}
+.venue-mod.neu{background:var(--paper3);color:var(--muted);border:1px solid var(--border);}
+.venue-notes{font-size:11px;color:var(--muted);line-height:1.8;}
 
 /* WEATHER CARD */
-.weather-card{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:14px;padding:14px;margin-bottom:14px;
-}
+.weather-card{background:var(--paper2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;}
 .weather-main{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
-.weather-emoji{font-size:36px;}
-.weather-temp{font-family:var(--font-display);font-size:36px;color:#fff;}
-.weather-detail{font-size:12px;color:var(--muted);}
+.weather-emoji{font-size:32px;}
+.weather-temp{font-family:var(--ff-head);font-size:36px;color:var(--ink);font-weight:800;letter-spacing:-1px;}
+.weather-detail{font-family:var(--ff-mono);font-size:11px;color:var(--muted);margin-top:2px;}
 .weather-alerts{display:flex;flex-direction:column;gap:5px;}
-.weather-alert{font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;}
-.weather-alert.red{background:var(--red-dim);color:var(--red);}
-.weather-alert.amber{background:rgba(240,165,0,0.08);color:var(--gold);}
-.weather-alert.ok{background:var(--green-dim);color:var(--green);}
+.weather-alert{font-family:var(--ff-mono);font-size:10px;font-weight:500;padding:5px 10px;border-radius:6px;letter-spacing:0.3px;}
+.weather-alert.red{background:var(--red-bg);color:var(--red);}
+.weather-alert.amber{background:var(--gold-bg);color:var(--gold);}
+.weather-alert.ok{background:var(--green-bg);color:var(--green);}
 
 /* FORM CONTROLS */
-.sl{font-size:9px;color:var(--muted);letter-spacing:2px;font-weight:600;margin-bottom:8px;text-transform:uppercase;}
+.sl{font-family:var(--ff-mono);font-size:9px;color:var(--dim);letter-spacing:2px;font-weight:500;margin-bottom:8px;text-transform:uppercase;}
 .leg-btns{display:flex;gap:6px;}
-.leg-btn{flex:1;padding:10px 0;border-radius:10px;border:1px solid var(--border);color:var(--dim);font-family:var(--font-display);font-size:20px;background:var(--bg3);transition:all 0.2s;letter-spacing:0.5px;}
-.leg-btn.active{background:var(--gold);border-color:var(--gold);color:#0a0f1a;}
-.stat-pills{display:flex;flex-wrap:wrap;gap:7px;}
-.stat-pill{padding:7px 13px;border-radius:20px;border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:500;background:var(--bg3);transition:all 0.2s;cursor:pointer;}
-.stat-pill.active{background:rgba(41,121,255,0.15);border-color:rgba(41,121,255,0.4);color:#82b1ff;}
-.opt-btns{display:flex;gap:6px;}
-.opt-btn{flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:500;background:var(--bg3);transition:all 0.2s;text-align:center;cursor:pointer;}
-.opt-btn.active-gold{background:rgba(240,165,0,0.12);border-color:rgba(240,165,0,0.4);color:var(--gold);}
-.opt-btn.active-blue{background:var(--blue-dim);border-color:rgba(41,121,255,0.4);color:#82b1ff;}
-.opt-btn-desc{font-size:9px;margin-top:2px;color:var(--dim);}
-.opt-btn.active-gold .opt-btn-desc{color:rgba(240,165,0,0.7);}
-.input-label{font-size:9px;color:var(--muted);margin-bottom:5px;letter-spacing:1.5px;text-transform:uppercase;}
-input[type=number],textarea{
-  width:100%;background:var(--bg3);border:1px solid var(--border);
-  border-radius:10px;color:var(--text);padding:10px 13px;
-  font-size:13px;font-family:var(--font-body);transition:border 0.2s;
+.leg-btn{
+  flex:1;padding:10px 0;border-radius:8px;
+  border:1px solid var(--border);color:var(--muted);
+  font-family:var(--ff-head);font-size:20px;font-weight:700;
+  background:var(--paper2);transition:all 0.15s;cursor:pointer;
 }
-input[type=number]:focus,textarea:focus{outline:none;border-color:var(--gold);}
-textarea{resize:vertical;padding:10px 13px;}
+.leg-btn.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+.stat-pills{display:flex;flex-wrap:wrap;gap:6px;}
+.stat-pill{
+  padding:6px 12px;border-radius:20px;
+  border:1px solid var(--border);color:var(--muted);
+  font-family:var(--ff-mono);font-size:10px;
+  background:var(--paper2);transition:all 0.15s;cursor:pointer;
+}
+.stat-pill.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+.opt-btns{display:flex;gap:6px;}
+.opt-btn{
+  flex:1;padding:9px 6px;border-radius:8px;
+  border:1px solid var(--border);color:var(--muted);
+  font-size:11px;font-weight:500;
+  background:var(--paper2);transition:all 0.15s;text-align:center;cursor:pointer;
+}
+.opt-btn.active-gold{background:var(--gold-bg);border-color:var(--gold-bdr);color:var(--gold);}
+.opt-btn.active-blue{background:var(--blue-bg);border-color:var(--blue-bdr);color:var(--blue);}
+.opt-btn-desc{font-family:var(--ff-mono);font-size:9px;margin-top:2px;color:var(--dimmer);}
+.opt-btn.active-gold .opt-btn-desc{color:rgba(200,133,10,0.7);}
+.input-label{font-family:var(--ff-mono);font-size:9px;color:var(--dim);margin-bottom:5px;letter-spacing:1.5px;text-transform:uppercase;}
+input[type=number],textarea,select{
+  width:100%;background:var(--paper2);
+  border:1px solid var(--border);
+  border-radius:8px;color:var(--ink);
+  padding:10px 13px;
+  font-size:13px;font-family:var(--ff-body);
+  transition:border 0.2s;
+  appearance:none;
+}
+input[type=number]:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold);}
+textarea{resize:vertical;}
 
 /* BUILD BUTTON */
 .build-btn{
   width:100%;padding:16px;
-  background:linear-gradient(135deg,#f0a500,#c07800);
-  border:none;border-radius:12px;color:#0a0f1a;
-  font-family:var(--font-display);font-size:20px;letter-spacing:2px;
+  background:var(--ink);
+  border:none;border-radius:10px;
+  color:#fff;
+  font-family:var(--ff-head);font-size:20px;font-weight:700;letter-spacing:0px;
   transition:all 0.2s;
-  box-shadow:0 2px 12px rgba(0,0,0,0.3);
+  position:relative;overflow:hidden;
 }
-.build-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(240,165,0,0.35);}
-.build-btn:disabled{background:var(--bg3);color:var(--dim);cursor:not-allowed;box-shadow:none;}
+.build-btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,0.05));
+}
+.build-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,0,0,0.2);}
+.build-btn:disabled{background:var(--paper3);color:var(--dim);cursor:not-allowed;}
 .build-btn-inner{display:flex;align-items:center;justify-content:center;gap:10px;}
 
 /* RESULTS */
 .result-header{
-  background:var(--bg2);
-  border:1px solid var(--border);border-radius:14px;
-  padding:16px;margin-bottom:16px;
+  background:var(--ink);
+  border-radius:12px;padding:20px;margin-bottom:16px;
 }
-.result-match{font-family:var(--font-display);font-size:13px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
-.result-summary{font-size:13px;color:var(--muted);line-height:1.6;}
+.result-match{font-family:var(--ff-mono);font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.result-summary{font-family:var(--ff-serif);font-size:15px;color:rgba(255,255,255,0.85);line-height:1.7;font-style:italic;}
 
 .stat-chips{display:flex;gap:8px;margin-bottom:16px;}
-.stat-chip{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;}
-.stat-chip-label{font-size:9px;color:var(--dim);letter-spacing:1.5px;margin-bottom:4px;font-weight:600;text-transform:uppercase;}
-.stat-chip-val{font-family:var(--font-display);font-size:22px;letter-spacing:0.5px;}
+.stat-chip{flex:1;background:var(--paper2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.stat-chip-label{font-family:var(--ff-mono);font-size:8px;color:var(--dim);letter-spacing:1.5px;margin-bottom:4px;text-transform:uppercase;}
+.stat-chip-val{font-family:var(--ff-head);font-size:22px;font-weight:700;letter-spacing:-0.5px;}
 
 .ai-tip{
-  background:var(--bg2);border:1px solid var(--border);
+  background:var(--paper2);
+  border:1px solid var(--border);
   border-left:3px solid var(--gold);
-  border-radius:12px;padding:12px 14px;margin-bottom:12px;
-  font-size:13px;color:var(--muted);line-height:1.6;
+  border-radius:10px;padding:12px 14px;margin-bottom:12px;
+  font-family:var(--ff-serif);font-size:14px;color:var(--muted);line-height:1.7;
+  font-style:italic;
 }
-.ai-tip strong{color:var(--gold);}
+.ai-tip strong{color:var(--gold);font-style:normal;font-family:var(--ff-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;}
 
 /* TABS */
-.result-tabs{display:flex;background:var(--bg3);border-radius:10px;padding:3px;margin-bottom:14px;border:1px solid var(--border);}
-.result-tab{flex:1;padding:8px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-weight:600;font-size:11px;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s;}
-.result-tab.active{background:var(--bg4);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+.result-tabs{display:flex;background:var(--paper3);border-radius:8px;padding:3px;margin-bottom:14px;border:1px solid var(--border);}
+.result-tab{flex:1;padding:8px;border-radius:6px;border:none;background:transparent;color:var(--dim);font-family:var(--ff-mono);font-size:10px;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s;}
+.result-tab.active{background:var(--ink);color:#fff;}
 
 /* LEG CARDS */
 .leg-card{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:14px;padding:14px 15px;margin-bottom:8px;
+  background:var(--paper2);
+  border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;margin-bottom:8px;
   position:relative;transition:border-color 0.2s;
 }
-.leg-medal{position:absolute;top:12px;right:14px;font-size:16px;}
+.leg-medal{position:absolute;top:12px;right:14px;font-size:15px;}
 .leg-inner{display:flex;gap:12px;}
-.leg-badge{border-radius:10px;padding:8px 10px;min-width:58px;text-align:center;flex-shrink:0;}
+.leg-badge{border-radius:8px;padding:8px 10px;min-width:58px;text-align:center;flex-shrink:0;}
 .leg-stat-icon{font-size:18px;margin-bottom:2px;}
-.leg-line{font-family:var(--font-display);font-size:20px;font-weight:400;line-height:1;}
-.leg-player{font-family:var(--font-display);font-size:19px;color:#fff;letter-spacing:0.5px;}
-.leg-meta{font-size:12px;color:var(--muted);margin-top:2px;}
-.leg-odds-val{font-weight:700;}
+.leg-line{font-family:var(--ff-head);font-size:20px;font-weight:700;line-height:1;letter-spacing:-0.5px;}
+.leg-player{font-family:var(--ff-head);font-size:19px;color:var(--ink);font-weight:700;letter-spacing:-0.5px;}
+.leg-meta{font-family:var(--ff-mono);font-size:10px;color:var(--muted);margin-top:3px;}
 .leg-rationale{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.6;}
-.leg-h2h{font-size:11px;color:var(--dim);margin-top:4px;font-style:italic;}
+.leg-h2h{font-family:var(--ff-mono);font-size:10px;color:var(--dim);margin-top:4px;}
 .conf-bar-wrap{display:flex;align-items:center;gap:8px;margin-top:6px;}
-.conf-bar-bg{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
-.conf-bar-fill{height:100%;border-radius:2px;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);}
-.conf-pct{font-family:var(--font-display);font-size:14px;min-width:34px;letter-spacing:0.5px;}
-.value-badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;margin-left:6px;vertical-align:middle;}
-.value-good{background:var(--green-dim);color:var(--green);}
-.value-poor{background:var(--red-dim);color:var(--red);}
+.conf-bar-bg{flex:1;height:2px;background:var(--border);border-radius:1px;overflow:hidden;}
+.conf-bar-fill{height:100%;border-radius:1px;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);}
+.conf-pct{font-family:var(--ff-mono);font-size:12px;min-width:34px;font-weight:500;}
+.value-badge{display:inline-block;padding:2px 7px;border-radius:6px;font-family:var(--ff-mono);font-size:9px;font-weight:500;margin-left:6px;vertical-align:middle;letter-spacing:0.5px;}
+.value-good{background:var(--green-bg);color:var(--green);}
+.value-poor{background:var(--red-bg);color:var(--red);}
 
 /* FORM SPARKLINE */
 .form-chart{display:flex;align-items:flex-end;gap:3px;height:20px;margin-top:6px;}
-.form-bar{width:7px;border-radius:2px 2px 0 0;min-height:2px;transition:height 0.5s;}
+.form-bar{width:7px;border-radius:2px 2px 0 0;min-height:2px;}
 
 /* ODDS COMPARISON */
-.odds-compare{margin-top:8px;background:var(--bg3);border-radius:8px;padding:8px 10px;}
-.odds-compare-label{font-size:9px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.odds-compare{margin-top:8px;background:var(--paper3);border-radius:8px;padding:8px 10px;}
+.odds-compare-label{font-family:var(--ff-mono);font-size:9px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;}
 .odds-books{display:flex;gap:6px;flex-wrap:wrap;}
-.odds-book{
-  flex:1;min-width:70px;padding:6px 8px;border-radius:8px;
-  background:var(--bg2);border:1px solid var(--border);
-  text-align:center;position:relative;
-}
-.odds-book.best{border-color:var(--green);background:var(--green-dim);}
-.odds-book-name{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
-.odds-book-val{font-family:var(--font-display);font-size:16px;letter-spacing:0.5px;}
+.odds-book{flex:1;min-width:70px;padding:6px 8px;border-radius:6px;background:var(--paper2);border:1px solid var(--border);text-align:center;position:relative;}
+.odds-book.best{border-color:var(--green);background:var(--green-bg);}
+.odds-book-name{font-family:var(--ff-mono);font-size:8px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
+.odds-book-val{font-family:var(--ff-head);font-size:16px;font-weight:700;color:var(--ink);}
 .odds-book.best .odds-book-val{color:var(--green);}
-.odds-best-tag{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:var(--green);color:#0a0f1a;font-size:8px;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.5px;white-space:nowrap;}
+.odds-best-tag{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-family:var(--ff-mono);font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:0.5px;white-space:nowrap;}
 
 /* SPORTSBET BUTTON */
 .sportsbet-btn{
   width:100%;padding:13px;
-  background:var(--bg3);
-  border:1px solid var(--border);
-  border-radius:12px;color:var(--muted);
-  font-family:var(--font-display);font-size:17px;letter-spacing:1.5px;
+  background:var(--paper3);
+  border:1px solid var(--border2);
+  border-radius:10px;color:var(--muted);
+  font-family:var(--ff-mono);font-size:12px;letter-spacing:1px;
   margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;
-  text-decoration:none;transition:all 0.2s;
+  text-decoration:none;transition:all 0.2s;cursor:pointer;
 }
-.sportsbet-btn:hover{border-color:var(--gold);color:var(--gold);}
+.sportsbet-btn:hover{border-color:var(--ink);color:var(--ink);}
 
 /* BOTTOM BTNS */
 .bottom-btns{display:flex;gap:8px;margin-top:20px;}
 .ghost-btn{
-  padding:11px 16px;background:var(--bg2);
-  border:1px solid var(--border);border-radius:10px;
-  color:var(--muted);font-size:12px;font-weight:600;
+  padding:11px 16px;background:var(--paper2);
+  border:1px solid var(--border);border-radius:8px;
+  color:var(--muted);font-family:var(--ff-mono);font-size:11px;
   letter-spacing:0.5px;transition:all 0.2s;cursor:pointer;
 }
-.ghost-btn:hover{border-color:var(--gold);color:var(--gold);}
+.ghost-btn:hover{border-color:var(--ink);color:var(--ink);}
 .ghost-btn.flex1{flex:1;}
 
 /* TRACKER */
-.tracker-card{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:14px;padding:14px 16px;margin-bottom:10px;
-}
-.tracker-match{font-family:var(--font-display);font-size:18px;color:#fff;letter-spacing:0.5px;}
-.tracker-date{font-size:11px;color:var(--dim);margin-bottom:10px;margin-top:2px;}
+.tracker-card{background:var(--paper2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.tracker-match{font-family:var(--ff-head);font-size:17px;color:var(--ink);font-weight:700;letter-spacing:-0.3px;}
+.tracker-date{font-family:var(--ff-mono);font-size:10px;color:var(--dim);margin-bottom:10px;margin-top:3px;}
 .tracker-legs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
-.tracker-leg{padding:4px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;}
-.tracker-leg.hit{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,0.2);}
-.tracker-leg.miss{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,68,68,0.2);}
-.tracker-leg.pending{background:var(--bg3);color:var(--muted);border:1px solid var(--border);}
-.tracker-result{font-size:13px;font-weight:700;margin-top:8px;}
+.tracker-leg{padding:4px 10px;border-radius:20px;font-family:var(--ff-mono);font-size:10px;cursor:pointer;transition:all 0.15s;}
+.tracker-leg.hit{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);}
+.tracker-leg.miss{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr);}
+.tracker-leg.pending{background:var(--paper3);color:var(--muted);border:1px solid var(--border);}
+.tracker-result{font-family:var(--ff-head);font-size:14px;font-weight:700;margin-top:8px;letter-spacing:-0.3px;}
 .tracker-result.win{color:var(--green);}
 .tracker-result.loss{color:var(--red);}
 
 /* SCAN */
 .scan-area{
-  border:2px dashed var(--border);border-radius:14px;
-  padding:32px 24px;text-align:center;cursor:pointer;
+  border:1px dashed var(--border2);border-radius:12px;
+  padding:28px 24px;text-align:center;cursor:pointer;
   transition:all 0.2s;margin-bottom:16px;
+  background:var(--paper2);
 }
-.scan-area:hover{border-color:var(--gold);background:rgba(240,165,0,0.04);}
+.scan-area:hover{border-color:var(--ink);background:var(--paper3);}
 
 /* INSIGHTS */
-.insights-card{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:14px;padding:14px;margin-bottom:14px;
-}
-.player-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);}
+.insights-card{background:var(--paper2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;}
+.player-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--paper3);}
 .player-row:last-child{border-bottom:none;}
-.rule-item{
-  padding:8px 12px;background:var(--bg3);border-radius:8px;
-  font-size:12px;color:var(--text);margin-bottom:6px;
-  border-left:3px solid var(--gold);line-height:1.5;
-}
+.rule-item{padding:8px 12px;background:var(--paper3);border-radius:6px;font-family:var(--ff-mono);font-size:11px;color:var(--ink);margin-bottom:6px;border-left:3px solid var(--gold);}
 
 /* SUMMARY CHIPS */
 .summary-bar{display:flex;gap:8px;margin-bottom:16px;}
-.summary-chip{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;}
-.summary-chip-label{font-size:9px;color:var(--dim);letter-spacing:1.5px;margin-bottom:3px;font-weight:600;text-transform:uppercase;}
-.summary-chip-val{font-family:var(--font-display);font-size:22px;color:#fff;letter-spacing:0.5px;}
+.summary-chip{flex:1;background:var(--paper2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.summary-chip-label{font-family:var(--ff-mono);font-size:8px;color:var(--dim);letter-spacing:1.5px;margin-bottom:3px;text-transform:uppercase;}
+.summary-chip-val{font-family:var(--ff-head);font-size:22px;color:var(--ink);font-weight:700;letter-spacing:-0.5px;}
 
 /* MISC */
 .empty{text-align:center;padding:48px 20px;color:var(--dim);}
-.empty-icon{font-size:48px;margin-bottom:12px;opacity:0.6;}
-.empty-title{font-family:var(--font-display);font-size:22px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;}
-.empty-sub{font-size:13px;line-height:1.6;}
-.disclaimer{text-align:center;margin-top:20px;font-size:10px;color:var(--dim);line-height:1.8;letter-spacing:0.5px;}
-.back-btn{background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:0.5px;margin-bottom:16px;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;}
-.back-btn:hover{color:var(--gold);}
-.status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:10px;}
+.empty-icon{font-size:44px;margin-bottom:12px;opacity:0.5;}
+.empty-title{font-family:var(--ff-head);font-size:20px;color:var(--muted);letter-spacing:-0.3px;margin-bottom:6px;font-weight:700;}
+.empty-sub{font-size:12px;line-height:1.7;font-family:var(--ff-mono);}
+.disclaimer{text-align:center;margin-top:20px;font-family:var(--ff-mono);font-size:9px;color:var(--dimmer);line-height:1.9;letter-spacing:0.5px;}
+.back-btn{background:none;border:none;color:var(--muted);font-family:var(--ff-mono);font-size:11px;letter-spacing:0.5px;margin-bottom:16px;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.back-btn:hover{color:var(--ink);}
+.status-row{display:flex;align-items:center;gap:8px;font-family:var(--ff-mono);font-size:11px;color:var(--muted);margin-bottom:10px;}
 ::-webkit-scrollbar{width:4px;}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* Select styling */
+select option{background:var(--paper);color:var(--ink);}
 </style>
 </head>
 <body>
@@ -403,7 +410,7 @@ textarea{resize:vertical;padding:10px 13px;}
       <div class="logo-icon">🏉</div>
       <div class="logo-text">
         <div class="logo-title">AFL MULTI</div>
-        <div class="logo-sub">AFL · Same Game Multis</div>
+        <div class="logo-sub">Same Game Multis · 2026</div>
       </div>
     </div>
     <div class="api-pill" id="apiBadge" style="display:none">
@@ -457,6 +464,9 @@ let riskLevel='balanced',lineBet='none',lineValue='',lineOdds='',context='';
 let result=null,resultTab='recommended';
 let tracker=JSON.parse(localStorage.getItem('afl_tracker')||'[]');
 let insights=null;
+let ladderData=null;
+let h2hData=null;
+let matchTip=null;
 let intelData=[]; // loaded from server — shared across all users
 let statsSearch='';
 let statsResults=[];
@@ -524,8 +534,16 @@ function renderHome(){
           </div>
         </div>
         <div class="game-footer">
-          <div class="game-venue">${v.emoji} ${v.name} · ${v.length}×${v.width}m</div>
-          <div class="game-cta">BUILD MULTI →</div>
+          <div style="flex:1">
+            <div class="game-venue">${v.emoji} ${v.name} · ${v.length}×${v.width}m</div>
+            ${(()=>{
+              const hi=getTeamLadderInfo(g.home_team);
+              const ai=getTeamLadderInfo(g.away_team);
+              if(!hi&&!ai) return '';
+              return `<div style="font-size:10px;color:var(--muted);margin-top:3px">${hi?'#'+hi.pos+' '+hi.form:'?'} vs ${ai?'#'+ai.pos+' '+ai.form:'?'}</div>`;
+            })()}
+          </div>
+          <div class="game-cta">BUILD →</div>
         </div>
       </div>`;
     }).join('');
@@ -608,6 +626,7 @@ function selectGame(id){
   screen='setup';render();
   fetchMarkets();
   fetchWeather();
+  fetchH2H(selectedGame.home_team, selectedGame.away_team);
 }
 
 // ── WEATHER ───────────────────────────────────────────
@@ -773,6 +792,23 @@ function renderSetup(){
       <div class="match-header-meta">📅 ${fmt(selectedGame.commence_time)}</div>
     </div>
 
+    ${(()=>{
+      const homeInfo=getTeamLadderInfo(selectedGame.home_team);
+      const awayInfo=getTeamLadderInfo(selectedGame.away_team);
+      if(!homeInfo&&!awayInfo) return '';
+      const row=(info,name)=>info?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border2)">
+        <div><div style="font-size:13px;font-weight:600;color:var(--text)">${name}</div><div style="font-size:10px;color:var(--dim)">#${info.pos} · ${info.wins}W-${info.losses}L · ${info.pct}%</div></div>
+        <div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Form</div><div style="font-size:13px;font-weight:700;color:var(--text)">${info.form||'—'}</div></div>
+      </div>`:'';
+      return `<div class="venue-card" style="margin-bottom:14px">
+        <div class="venue-name" style="font-size:14px;margin-bottom:8px">📊 2026 Form & Ladder</div>
+        ${row(homeInfo,selectedGame.home_team)}
+        ${row(awayInfo,selectedGame.away_team)}
+        ${h2hData?.h2h?.length>0?`<div style="margin-top:8px"><div style="font-size:10px;color:var(--dim);font-weight:700;letter-spacing:1px;margin-bottom:6px">H2H LAST ${h2hData.h2h.length} MEETINGS</div>
+        ${h2hData.h2h.map(g=>`<div style="font-size:11px;color:var(--muted);padding:3px 0">${g.year} R${g.round}: ${g.winner} by ${g.margin}pts @ ${g.venue||'TBC'}</div>`).join('')}
+        </div>`:'<div style="font-size:11px;color:var(--dim);margin-top:8px">Loading H2H...</div>'}
+      </div>`;
+    })()}
     ${venueHTML}
     ${weatherHTML}
 
@@ -980,6 +1016,8 @@ function buildPrompt(){
   const alerts=getWeatherAlerts();
   const weatherSection=weather?'\nWEATHER: '+weather.temp+'C, wind '+weather.wind+'km/h, rain '+(weather.rainMm>0?weather.rainMm+'mm':'none')+'\n'+alerts.map(a=>a.msg).join('\n')+(weather.wind>40?'\nDO NOT suggest any goals legs.':'')+'\n':'';
   const insightsSection=insights&&insights.rules&&insights.rules.length>0?'\nPERSONAL INTELLIGENCE:\n'+insights.rules.join('\n')+'\n':'';
+  const matchContextSection = buildMatchContext(home, away);
+  const matchContextPrompt = matchContextSection ? '\n2026 FORM & H2H DATA:\n' + matchContextSection + '\n' : '';
   // Inject saved round intel into every prompt
   const intelSection=intelData.length>0?'\nROUND INTEL (use this to inform goals, disposals, team lines and form):\n'+intelData.map(d=>d.label+': '+d.summary).join('\n\n')+'\n':'';
 
@@ -1023,7 +1061,7 @@ function buildPrompt(){
     ? '\nNAMED PLAYERS FOR THIS MATCH (only suggest players from these lists):\n'+namedTeams.trim()+'\nCRITICAL: Do not suggest any player not in the named teams above.\n'
     : '\nNamed teams not provided — use your best 2026 AFL knowledge but only suggest players currently on AFL lists.\n';
 
-  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing today:\n'+confirmedPlayers.join(', ')+'\n\n'+playerTeamNote+'\n\nCRITICAL RULES:\n1. You may ONLY suggest players from the CONFIRMED PLAYING list above.\n2. Every player must be assigned their CURRENT 2026 team ('+home+' or '+away+' only).\n3. Do not use historical team data — players change teams. Verify each player is currently at the team you assign them.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+intelSection+(context?'Context: '+context+'\n':'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
+  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing today:\n'+confirmedPlayers.join(', ')+'\n\n'+playerTeamNote+'\n\nCRITICAL RULES:\n1. You may ONLY suggest players from the CONFIRMED PLAYING list above.\n2. Every player must be assigned their CURRENT 2026 team ('+home+' or '+away+' only).\n3. Do not use historical team data — players change teams. Verify each player is currently at the team you assign them.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+matchContextPrompt+intelSection+(context?'Context: '+context+'\n':'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
 }
 
 
@@ -1411,6 +1449,46 @@ function removeFromSaved(name){
   renderStatsSearch();
 }
 
+// ── SQUIGGLE DATA ─────────────────────────────────────
+
+async function fetchLadder() {
+  try {
+    const res = await fetch(`${PROXY}/ladder`);
+    ladderData = await res.json();
+  } catch(e) { ladderData = null; }
+}
+
+async function fetchH2H(home, away) {
+  try {
+    const res = await fetch(`${PROXY}/h2h/${encodeURIComponent(home)}/${encodeURIComponent(away)}`);
+    h2hData = await res.json();
+  } catch(e) { h2hData = null; }
+}
+
+function getTeamLadderInfo(teamName) {
+  if (!ladderData?.ladder) return null;
+  const surname = teamName.split(' ').pop().toLowerCase();
+  return ladderData.ladder.find(t => t.team.toLowerCase().includes(surname)) || null;
+}
+
+function buildMatchContext(home, away) {
+  const homeInfo = getTeamLadderInfo(home);
+  const awayInfo = getTeamLadderInfo(away);
+  const lines = [];
+
+  if (homeInfo) lines.push(`${home}: Ladder pos ${homeInfo.pos}, ${homeInfo.wins}W-${homeInfo.losses}L, ${homeInfo.pct}%, Form: ${homeInfo.form || 'N/A'}`);
+  if (awayInfo) lines.push(`${away}: Ladder pos ${awayInfo.pos}, ${awayInfo.wins}W-${awayInfo.losses}L, ${awayInfo.pct}%, Form: ${awayInfo.form || 'N/A'}`);
+
+  if (h2hData?.h2h?.length > 0) {
+    lines.push('\nH2H Last 5 meetings:');
+    h2hData.h2h.forEach(g => {
+      lines.push(`  ${g.year} R${g.round}: ${g.hteam} ${g.hscore} def${g.winner===g.hteam?'':'d'} ${g.ateam} ${g.ascore} (margin: ${g.margin}pts) @ ${g.venue}`);
+    });
+  }
+
+  return lines.join('\n');
+}
+
 // ── INTEL ────────────────────────────────────────────
 function renderIntelStatus(){
   // Show intel status on home and setup screens
@@ -1464,6 +1542,46 @@ async function clearAllIntelServer(){
     await fetch(`${PROXY}/intel`,{method:'DELETE'});
     await fetchIntel();
   }catch(e){}
+}
+
+// ── SQUIGGLE DATA ─────────────────────────────────────
+
+async function fetchLadder() {
+  try {
+    const res = await fetch(`${PROXY}/ladder`);
+    ladderData = await res.json();
+  } catch(e) { ladderData = null; }
+}
+
+async function fetchH2H(home, away) {
+  try {
+    const res = await fetch(`${PROXY}/h2h/${encodeURIComponent(home)}/${encodeURIComponent(away)}`);
+    h2hData = await res.json();
+  } catch(e) { h2hData = null; }
+}
+
+function getTeamLadderInfo(teamName) {
+  if (!ladderData?.ladder) return null;
+  const surname = teamName.split(' ').pop().toLowerCase();
+  return ladderData.ladder.find(t => t.team.toLowerCase().includes(surname)) || null;
+}
+
+function buildMatchContext(home, away) {
+  const homeInfo = getTeamLadderInfo(home);
+  const awayInfo = getTeamLadderInfo(away);
+  const lines = [];
+
+  if (homeInfo) lines.push(`${home}: Ladder pos ${homeInfo.pos}, ${homeInfo.wins}W-${homeInfo.losses}L, ${homeInfo.pct}%, Form: ${homeInfo.form || 'N/A'}`);
+  if (awayInfo) lines.push(`${away}: Ladder pos ${awayInfo.pos}, ${awayInfo.wins}W-${awayInfo.losses}L, ${awayInfo.pct}%, Form: ${awayInfo.form || 'N/A'}`);
+
+  if (h2hData?.h2h?.length > 0) {
+    lines.push('\nH2H Last 5 meetings:');
+    h2hData.h2h.forEach(g => {
+      lines.push(`  ${g.year} R${g.round}: ${g.hteam} ${g.hscore} def${g.winner===g.hteam?'':'d'} ${g.ateam} ${g.ascore} (margin: ${g.margin}pts) @ ${g.venue}`);
+    });
+  }
+
+  return lines.join('\n');
 }
 
 // ── INTEL ────────────────────────────────────────────
@@ -1672,7 +1790,8 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
 
 render();
 if(!gamesLoaded) fetchGames();
-fetchIntel(); // load shared intel on startup
+fetchIntel();
+fetchLadder(); // load shared intel on startup
 </script>
 </body>
 </html>
