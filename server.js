@@ -275,6 +275,72 @@ app.delete('/intel', async (req, res) => {
   res.json({ success: true });
 });
 
+
+// Fetch AFL stats direct from DFS Australia database
+app.get('/dfsaustralia', async (req, res) => {
+  try {
+    const r = await fetch('https://dfsaustralia.com/wp-admin/admin-ajax.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://dfsaustralia.com/afl-stats-download/',
+        'Origin': 'https://dfsaustralia.com',
+      },
+      body: 'action=afl_player_stats_download_call_mysql'
+    });
+    
+    if (!r.ok) {
+      return res.status(r.status).json({ error: 'DFS Australia returned ' + r.status });
+    }
+    
+    const raw = await r.text();
+    
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch(e) {
+      return res.status(500).json({ error: 'Invalid response', raw: raw.slice(0, 200) });
+    }
+    
+    if (!data.data || !Array.isArray(data.data)) {
+      return res.status(500).json({ error: 'Unexpected data format', keys: Object.keys(data) });
+    }
+    
+    // Build CSV from the data
+    const stats = data.data;
+    const headers = ['player','team','opponent','year','round','kicks','handballs','marks',
+                     'tackles','hitouts','ruckContests','freesFor','freesAgainst','goals',
+                     'behinds','cbas','kickins','kickinsPlayon','tog','fantasyPoints',
+                     'superCoachPoints','namedPosition'];
+    
+    // Return both raw stats and a summary for the AI
+    const summary = stats.slice(0, 200).map(p => {
+      const parts = [p.player, '('+p.team+')'];
+      if(p.kicks) parts.push(p.kicks+' kicks');
+      if(p.handballs) parts.push(p.handballs+' handballs');
+      const disp = (parseInt(p.kicks)||0) + (parseInt(p.handballs)||0);
+      if(disp>0) parts.push(disp+' disposals');
+      if(p.marks) parts.push(p.marks+' marks');
+      if(p.tackles) parts.push(p.tackles+' tackles');
+      if(p.goals) parts.push(p.goals+' goals');
+      if(p.round) parts.push('R'+p.round);
+      return parts.join(' | ');
+    }).join('\n');
+    
+    res.json({
+      success: true,
+      count: stats.length,
+      summary,
+      stats: stats.slice(0, 500), // return first 500 rows
+    });
+    
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`Proxy running on port ${PORT}`));
 
 // ── SQUIGGLE DATA ─────────────────────────────────────
