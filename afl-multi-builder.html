@@ -464,6 +464,7 @@ let riskLevel='balanced',lineBet='none',lineValue='',lineOdds='',context='';
 let result=null,resultTab='recommended';
 let tracker=JSON.parse(localStorage.getItem('afl_tracker')||'[]');
 let insights=null;
+let dfsStats=null; // full season stats from DFS Australia
 let ladderData=null;
 let h2hData=null;
 let matchTip=null;
@@ -829,6 +830,7 @@ function renderSetup(){
     </div>
 
     <div id="setupIntelStatus"></div>
+    <div id="dfsStatus"></div>
     <div id="aiError" style="color:var(--red);font-size:13px;margin-bottom:12px;display:none"></div>
     <button class="build-btn" id="buildBtn" onclick="runAnalysis()">⚡ BUILD MY ${numLegs}-LEG MULTI</button>
     <div class="disclaimer">Please gamble responsibly · 1800 858 858</div>
@@ -1018,6 +1020,7 @@ function buildPrompt(){
   const insightsSection=insights&&insights.rules&&insights.rules.length>0?'\nPERSONAL INTELLIGENCE:\n'+insights.rules.join('\n')+'\n':'';
   const matchContextSection = buildMatchContext(home, away);
   const matchContextPrompt = matchContextSection ? '\n2026 FORM & H2H DATA:\n' + matchContextSection + '\n' : '';
+  const dfsStatsSection = buildDFSStatsSection(home, away);
   // Inject saved round intel into every prompt
   const intelSection=intelData.length>0?'\nROUND INTEL (use this to inform goals, disposals, team lines and form):\n'+intelData.map(d=>d.label+': '+d.summary).join('\n\n')+'\n':'';
 
@@ -1061,7 +1064,7 @@ function buildPrompt(){
     ? '\nNAMED PLAYERS FOR THIS MATCH (only suggest players from these lists):\n'+namedTeams.trim()+'\nCRITICAL: Do not suggest any player not in the named teams above.\n'
     : '\nNamed teams not provided — use your best 2026 AFL knowledge but only suggest players currently on AFL lists.\n';
 
-  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing today:\n'+confirmedPlayers.join(', ')+'\n\n'+playerTeamNote+'\n\nCRITICAL RULES:\n1. You may ONLY suggest players from the CONFIRMED PLAYING list above.\n2. Every player must be assigned their CURRENT 2026 team ('+home+' or '+away+' only).\n3. Do not use historical team data — players change teams. Verify each player is currently at the team you assign them.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+matchContextPrompt+intelSection+(context?'Context: '+context+'\n':'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
+  const confirmedNote=hasConfirmed?'CONFIRMED PLAYING — these players are 100% named and playing today:\n'+confirmedPlayers.join(', ')+'\n\n'+playerTeamNote+'\n\nCRITICAL RULES:\n1. You may ONLY suggest players from the CONFIRMED PLAYING list above.\n2. Every player must be assigned their CURRENT 2026 team ('+home+' or '+away+' only).\n3. Do not use historical team data — players change teams. Verify each player is currently at the team you assign them.\n':''; return 'You are an expert AFL statistician and betting analyst. Build the best '+numLegs+'-leg multi for: '+home+' vs '+away+'.\n'+confirmedNote+matchContextPrompt+dfsStatsSection+intelSection+(context?'Context: '+context+'\n':'')+'\nTeam focus: '+teamFilter+' | Risk: '+riskDesc+'\nLine bet: '+lineBetInstruction+'\n'+venueSection+weatherSection+statsSection+insightsSection+'\n'+(hasMarkets?'Live markets (use these players for disposal/tackle legs):\n'+marketList+'\n':'No live markets available.\n')+'\nSTAT TYPE RULES — you MUST include legs from every selected stat type:\n'+statInstructions.join('\n')+'\n\nCRITICAL: Do NOT fill all legs with disposals. Spread legs across ALL selected stat types above.\nFor legs with no live odds, use your AFL knowledge and set odds/bookmaker to null.\nExactly '+numLegs+' legs total. Flag weakest leg.\n\nRespond ONLY with valid JSON, no markdown:\n{"matchSummary":"<2 sentences>","recommendedLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<50-95>,"rationale":"<2 sentences>","h2h":"<or null>"}],"combinedRating":"<Risky|Reasonable|Solid|Strong|Elite>","combinedTip":"<2 sentences>","estimatedOdds":"<e.g. $8-12>","warningLegs":["<weakest>"],"alternativeLegs":[{"player":"<n>","team":"<t>","stat":"<s>","line":<n>,"odds":"<or null>","bookmaker":"<or null>","confidence":<n>,"rationale":"<why>","h2h":"<or null>"}]}';
 }
 
 
@@ -1449,6 +1452,83 @@ function removeFromSaved(name){
   renderStatsSearch();
 }
 
+// ── DFS AUSTRALIA STATS ──────────────────────────────
+async function fetchDFSStats(){
+  try {
+    const res = await fetch(`${PROXY}/dfsaustralia`);
+    const data = await res.json();
+    if(data.success && data.stats) {
+      dfsStats = data.stats;
+      console.log('DFS stats loaded:', dfsStats.length, 'records');
+      renderDFSStatus();
+      renderIntelStatus();
+    }
+  } catch(e) { dfsStats = null; }
+}
+
+function getPlayerDFSStats(playerName) {
+  if(!dfsStats) return null;
+  const surname = playerName.split(' ').pop().toLowerCase();
+  const first = playerName.split(' ')[0].toLowerCase();
+  // Find all records for this player
+  const records = dfsStats.filter(p => {
+    const pName = (p.player||'').toLowerCase();
+    return pName.includes(surname) && pName.includes(first);
+  });
+  if(records.length === 0) return null;
+  // Calculate averages from all records
+  const avg = (field) => {
+    const vals = records.map(r => parseFloat(r[field])||0).filter(v=>v>0);
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : null;
+  };
+  const last5 = records.slice(0,5).map(r => ({
+    round: r.round,
+    disposals: (parseInt(r.kicks)||0)+(parseInt(r.handballs)||0),
+    goals: parseInt(r.goals)||0,
+    marks: parseInt(r.marks)||0,
+    tackles: parseInt(r.tackles)||0,
+  }));
+  return {
+    name: records[0].player,
+    team: records[0].team,
+    position: records[0].namedPosition,
+    games: records.length,
+    avgDisposals: avg('disposals') || (((parseFloat(avg('kicks'))||0)+(parseFloat(avg('handballs'))||0)).toFixed(1)),
+    avgGoals: avg('goals'),
+    avgMarks: avg('marks'),
+    avgTackles: avg('tackles'),
+    avgKicks: avg('kicks'),
+    avgHandballs: avg('handballs'),
+    last5,
+  };
+}
+
+function buildDFSStatsSection(home, away) {
+  if(!dfsStats) return '';
+  // Get all players for these two teams from most recent round
+  const maxRound = Math.max(...dfsStats.map(p=>parseInt(p.round)||0));
+  const recentPlayers = dfsStats.filter(p => {
+    const t = (p.team||'').toLowerCase();
+    return parseInt(p.round) >= maxRound - 2 && (
+      home.toLowerCase().includes(t) || away.toLowerCase().includes(t) ||
+      t.includes(home.split(' ').pop().toLowerCase()) ||
+      t.includes(away.split(' ').pop().toLowerCase())
+    );
+  });
+  if(recentPlayers.length === 0) return '';
+  const lines = recentPlayers.slice(0,40).map(p => {
+    const disp = (parseInt(p.kicks)||0)+(parseInt(p.handballs)||0);
+    const parts = [p.player,'('+p.team+')'];
+    if(disp>0) parts.push(disp+' disposals');
+    if(parseInt(p.goals)>0) parts.push(p.goals+' goals');
+    if(parseInt(p.marks)>0) parts.push(p.marks+' marks');
+    if(parseInt(p.tackles)>0) parts.push(p.tackles+' tackles');
+    if(p.namedPosition) parts.push(p.namedPosition);
+    return parts.join(' | ');
+  }).join('\n');
+  return '\nRECENT PLAYER STATS (DFS Australia - 2026 season, last 3 rounds):\n'+lines+'\n';
+}
+
 // ── SQUIGGLE DATA ─────────────────────────────────────
 
 async function fetchLadder() {
@@ -1490,6 +1570,19 @@ function buildMatchContext(home, away) {
 }
 
 // ── INTEL ────────────────────────────────────────────
+function renderDFSStatus(){
+  const el = document.getElementById('dfsStatus');
+  if(!el) return;
+  if(!dfsStats) {
+    el.innerHTML='';
+    return;
+  }
+  const maxRound = Math.max(...dfsStats.map(p=>parseInt(p.round)||0));
+  el.innerHTML=`<div style="background:var(--green-bg);border:1px solid var(--green-bdr);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--green);font-family:var(--ff-mono)">
+    ✅ <strong>${dfsStats.length} player stat records loaded</strong> · 2026 season through Round ${maxRound} · DFS Australia
+  </div>`;
+}
+
 function renderIntelStatus(){
   // Show intel status on home and setup screens
   const homeBar = document.getElementById('intelStatusBar');
@@ -1542,6 +1635,83 @@ async function clearAllIntelServer(){
     await fetch(`${PROXY}/intel`,{method:'DELETE'});
     await fetchIntel();
   }catch(e){}
+}
+
+// ── DFS AUSTRALIA STATS ──────────────────────────────
+async function fetchDFSStats(){
+  try {
+    const res = await fetch(`${PROXY}/dfsaustralia`);
+    const data = await res.json();
+    if(data.success && data.stats) {
+      dfsStats = data.stats;
+      console.log('DFS stats loaded:', dfsStats.length, 'records');
+      renderDFSStatus();
+      renderIntelStatus();
+    }
+  } catch(e) { dfsStats = null; }
+}
+
+function getPlayerDFSStats(playerName) {
+  if(!dfsStats) return null;
+  const surname = playerName.split(' ').pop().toLowerCase();
+  const first = playerName.split(' ')[0].toLowerCase();
+  // Find all records for this player
+  const records = dfsStats.filter(p => {
+    const pName = (p.player||'').toLowerCase();
+    return pName.includes(surname) && pName.includes(first);
+  });
+  if(records.length === 0) return null;
+  // Calculate averages from all records
+  const avg = (field) => {
+    const vals = records.map(r => parseFloat(r[field])||0).filter(v=>v>0);
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : null;
+  };
+  const last5 = records.slice(0,5).map(r => ({
+    round: r.round,
+    disposals: (parseInt(r.kicks)||0)+(parseInt(r.handballs)||0),
+    goals: parseInt(r.goals)||0,
+    marks: parseInt(r.marks)||0,
+    tackles: parseInt(r.tackles)||0,
+  }));
+  return {
+    name: records[0].player,
+    team: records[0].team,
+    position: records[0].namedPosition,
+    games: records.length,
+    avgDisposals: avg('disposals') || (((parseFloat(avg('kicks'))||0)+(parseFloat(avg('handballs'))||0)).toFixed(1)),
+    avgGoals: avg('goals'),
+    avgMarks: avg('marks'),
+    avgTackles: avg('tackles'),
+    avgKicks: avg('kicks'),
+    avgHandballs: avg('handballs'),
+    last5,
+  };
+}
+
+function buildDFSStatsSection(home, away) {
+  if(!dfsStats) return '';
+  // Get all players for these two teams from most recent round
+  const maxRound = Math.max(...dfsStats.map(p=>parseInt(p.round)||0));
+  const recentPlayers = dfsStats.filter(p => {
+    const t = (p.team||'').toLowerCase();
+    return parseInt(p.round) >= maxRound - 2 && (
+      home.toLowerCase().includes(t) || away.toLowerCase().includes(t) ||
+      t.includes(home.split(' ').pop().toLowerCase()) ||
+      t.includes(away.split(' ').pop().toLowerCase())
+    );
+  });
+  if(recentPlayers.length === 0) return '';
+  const lines = recentPlayers.slice(0,40).map(p => {
+    const disp = (parseInt(p.kicks)||0)+(parseInt(p.handballs)||0);
+    const parts = [p.player,'('+p.team+')'];
+    if(disp>0) parts.push(disp+' disposals');
+    if(parseInt(p.goals)>0) parts.push(p.goals+' goals');
+    if(parseInt(p.marks)>0) parts.push(p.marks+' marks');
+    if(parseInt(p.tackles)>0) parts.push(p.tackles+' tackles');
+    if(p.namedPosition) parts.push(p.namedPosition);
+    return parts.join(' | ');
+  }).join('\n');
+  return '\nRECENT PLAYER STATS (DFS Australia - 2026 season, last 3 rounds):\n'+lines+'\n';
 }
 
 // ── SQUIGGLE DATA ─────────────────────────────────────
@@ -1791,7 +1961,8 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
 render();
 if(!gamesLoaded) fetchGames();
 fetchIntel();
-fetchLadder(); // load shared intel on startup
+fetchLadder();
+fetchDFSStats(); // load shared intel on startup
 </script>
 </body>
 </html>
