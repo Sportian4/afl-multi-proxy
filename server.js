@@ -277,8 +277,18 @@ app.delete('/intel', async (req, res) => {
 
 
 // Fetch AFL stats direct from DFS Australia database
+// Cache stats to avoid hammering their server
+let dfsStatsCache = null;
+let dfsStatsCacheTime = 0;
+const DFS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+
 app.get('/dfsaustralia', async (req, res) => {
   try {
+    // Return cached data if fresh
+    if (dfsStatsCache && Date.now() - dfsStatsCacheTime < DFS_CACHE_TTL) {
+      return res.json({ success: true, count: dfsStatsCache.length, stats: dfsStatsCache, cached: true });
+    }
+
     const r = await fetch('https://dfsaustralia.com/wp-admin/admin-ajax.php', {
       method: 'POST',
       headers: {
@@ -289,53 +299,34 @@ app.get('/dfsaustralia', async (req, res) => {
       },
       body: 'action=afl_player_stats_download_call_mysql'
     });
-    
-    if (!r.ok) {
-      return res.status(r.status).json({ error: 'DFS Australia returned ' + r.status });
-    }
-    
+
+    if (!r.ok) return res.status(r.status).json({ error: 'DFS Australia returned ' + r.status });
+
     const raw = await r.text();
-    
-    // Try to parse as JSON
     let data;
-    try {
-      data = JSON.parse(raw);
-    } catch(e) {
-      return res.status(500).json({ error: 'Invalid response', raw: raw.slice(0, 200) });
+    try { data = JSON.parse(raw); }
+    catch(e) { return res.status(500).json({ error: 'Invalid response', raw: raw.slice(0, 300) }); }
+
+    // Handle both {data:[]} and direct array formats
+    const stats = Array.isArray(data) ? data : (data.data || data.stats || []);
+    if (!Array.isArray(stats) || stats.length === 0) {
+      return res.status(500).json({ error: 'No stats found', keys: Object.keys(data), sample: raw.slice(0,200) });
     }
-    
-    if (!data.data || !Array.isArray(data.data)) {
-      return res.status(500).json({ error: 'Unexpected data format', keys: Object.keys(data) });
-    }
-    
-    // Build CSV from the data
-    const stats = data.data;
-    const headers = ['player','team','opponent','year','round','kicks','handballs','marks',
-                     'tackles','hitouts','ruckContests','freesFor','freesAgainst','goals',
-                     'behinds','cbas','kickins','kickinsPlayon','tog','fantasyPoints',
-                     'superCoachPoints','namedPosition'];
-    
-    // Return both raw stats and a summary for the AI
-    const summary = stats.slice(0, 200).map(p => {
-      const parts = [p.player, '('+p.team+')'];
-      if(p.kicks) parts.push(p.kicks+' kicks');
-      if(p.handballs) parts.push(p.handballs+' handballs');
-      const disp = (parseInt(p.kicks)||0) + (parseInt(p.handballs)||0);
-      if(disp>0) parts.push(disp+' disposals');
-      if(p.marks) parts.push(p.marks+' marks');
-      if(p.tackles) parts.push(p.tackles+' tackles');
-      if(p.goals) parts.push(p.goals+' goals');
-      if(p.round) parts.push('R'+p.round);
-      return parts.join(' | ');
-    }).join('\n');
-    
-    res.json({
-      success: true,
-      count: stats.length,
-      summary,
-      stats: stats.slice(0, 500), // return first 500 rows
-    });
-    
+
+    // Normalise fields — add calculated disposals
+    const normalised = stats.map(p => ({
+      ...p,
+      disposals: (parseInt(p.kicks)||0) + (parseInt(p.handballs)||0),
+      round: parseInt(p.round) || parseInt(p.roundId) || 0,
+      player: p.player || p.playerName || p.name || '',
+      team: p.team || p.teamName || p.club || '',
+    }));
+
+    // Cache it
+    dfsStatsCache = normalised;
+    dfsStatsCacheTime = Date.now();
+
+    res.json({ success: true, count: normalised.length, stats: normalised });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
